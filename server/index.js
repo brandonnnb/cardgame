@@ -23,6 +23,7 @@ const dist = path.join(root, "dist");
 const rooms = new Map();
 const disconnectGraceMs = 60_000;
 const botDelayMs = 450;
+const serverId = randomBytes(4).toString("hex");
 
 function roomCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -48,11 +49,15 @@ function publicRoom(room) {
     hostId: room.hostId,
     status: room.status,
     settings: room.settings,
+    serverId,
+    createdAt: room.createdAt,
+    updatedAt: room.updatedAt,
     seats: room.seats.map(({ token: _token, socket: _socket, disconnectTimer: _timer, ...seat }) => seat),
   };
 }
 
 function broadcastRoom(room) {
+  room.updatedAt = Date.now();
   for (const seat of room.seats) {
     if (!seat.socket || seat.socket.readyState !== seat.socket.OPEN) continue;
     send(seat.socket, {
@@ -65,8 +70,8 @@ function broadcastRoom(room) {
   }
 }
 
-function broadcastError(ws, message) {
-  send(ws, { type: "error", message });
+function broadcastError(ws, message, code = "error") {
+  send(ws, { type: "error", code, message, serverId });
 }
 
 function addBotSeat(room) {
@@ -199,7 +204,8 @@ function createRoom(ws, data) {
     helper: false,
     samples: Number(data.settings?.samples ?? 120),
   };
-  const room = { code, hostId: seat.id, status: "lobby", settings, seats: [seat], game: null, botTimer: null };
+  const now = Date.now();
+  const room = { code, hostId: seat.id, status: "lobby", settings, seats: [seat], game: null, botTimer: null, createdAt: now, updatedAt: now };
   const bots = Math.max(0, Math.min(5, Number(data.bots ?? 0)));
   for (let i = 0; i < bots; i++) addBotSeat(room);
   rooms.set(code, room);
@@ -211,7 +217,7 @@ function createRoom(ws, data) {
 function joinRoom(ws, data) {
   const code = String(data.code ?? "").trim().toUpperCase();
   const room = rooms.get(code);
-  if (!room) return broadcastError(ws, "Room not found.");
+  if (!room) return broadcastError(ws, `Room ${code || "----"} was not found on this server (${serverId}). Make sure everyone opened the same hosted URL, not a local dev URL.`, "room_not_found");
   const suppliedToken = String(data.token ?? "");
   let seat = suppliedToken ? room.seats.find((s) => s.token === suppliedToken) : null;
   if (!seat) {
@@ -275,6 +281,27 @@ function handleMessage(ws, raw) {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
+  if (url.pathname === "/api/health") {
+    res.writeHead(200, {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+    });
+    res.end(JSON.stringify({
+      ok: true,
+      serverId,
+      roomCount: rooms.size,
+      rooms: [...rooms.values()].map((room) => ({
+        code: room.code,
+        status: room.status,
+        seats: room.seats.length,
+        connected: room.seats.filter((s) => s.connected).length,
+        createdAt: room.createdAt,
+        updatedAt: room.updatedAt,
+      })),
+    }));
+    return;
+  }
   const requested = url.pathname === "/" ? "/index.html" : url.pathname;
   const filePath = path.normalize(path.join(dist, requested));
   if (!filePath.startsWith(dist) || !existsSync(filePath)) {
@@ -305,5 +332,5 @@ wss.on("connection", (ws) => {
 
 const port = Number(process.env.PORT ?? 8787);
 server.listen(port, () => {
-  console.log(`River server listening on http://127.0.0.1:${port}`);
+  console.log(`River server ${serverId} listening on http://127.0.0.1:${port}`);
 });

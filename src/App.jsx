@@ -21,6 +21,10 @@ function multiplayerUrl() {
   return `${protocol}//${window.location.host}/ws`;
 }
 
+function multiplayerHttpUrl() {
+  return multiplayerUrl().replace(/^ws:/, "http:").replace(/^wss:/, "https:").replace(/\/ws$/, "");
+}
+
 function makeDeck() {
   const deck = [];
   for (const suit of SUITS) {
@@ -1057,13 +1061,15 @@ export default function UpDownRiverGame() {
   const [isOnlineGame, setIsOnlineGame] = useState(false);
   const [savedGame, setSavedGame] = useState(() => loadSavedGame());
   const [mpName, setMpName] = useState(profile.name ?? "");
-  const [mpCode, setMpCode] = useState("");
+  const [mpCode, setMpCode] = useState(() => new URLSearchParams(window.location.search).get("room")?.toUpperCase().slice(0, 4) ?? "");
   const [mpBots, setMpBots] = useState(1);
   const [mpRoom, setMpRoom] = useState(null);
   const [mpPlayerId, setMpPlayerId] = useState(null);
   const [mpToken, setMpToken] = useState(null);
   const [mpError, setMpError] = useState("");
   const [mpConnected, setMpConnected] = useState(false);
+  const [mpBusy, setMpBusy] = useState(false);
+  const [mpCopyStatus, setMpCopyStatus] = useState("");
   const [rulesOpen, setRulesOpen] = useState(false);
   const [popup, setPopup] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1132,6 +1138,7 @@ export default function UpDownRiverGame() {
   const savedGameSummary = savedGame
     ? `Round ${savedGame.roundIndex + 1}/${savedGame.sequence.length} · ${savedGame.handSize} cards · ${savedGame.phase === "gameEnd" ? "game over" : savedGame.phase}`
     : null;
+  const mpShareUrl = mpRoom ? `${window.location.origin}${window.location.pathname}?room=${mpRoom.code}` : "";
 
   useEffect(() => {
     if (screen !== "game" || isOnlineGame) return undefined;
@@ -1217,6 +1224,8 @@ export default function UpDownRiverGame() {
 
   function connectMultiplayer(payload) {
     setMpError("");
+    setMpCopyStatus("");
+    setMpBusy(true);
     saveMultiplayerProfile({ name: mpName.trim() });
     socketRef.current?.close();
     const ws = new WebSocket(multiplayerUrl());
@@ -1225,18 +1234,28 @@ export default function UpDownRiverGame() {
       setMpConnected(true);
       ws.send(JSON.stringify(payload));
     };
-    ws.onclose = () => setMpConnected(false);
-    ws.onerror = () => setMpError("Could not connect to the multiplayer server.");
+    ws.onclose = () => {
+      setMpConnected(false);
+      setMpBusy(false);
+    };
+    ws.onerror = () => {
+      setMpBusy(false);
+      setMpError(`Could not connect to the multiplayer server at ${multiplayerUrl()}.`);
+    };
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       if (msg.type === "error") {
+        setMpBusy(false);
         setMpError(msg.message);
         return;
       }
       if (msg.type !== "room") return;
+      setMpBusy(false);
       setMpRoom(msg.room);
       setMpPlayerId(msg.playerId);
       setMpToken(msg.token);
+      setMpCode(msg.room.code);
+      window.history.replaceState(null, "", `${window.location.pathname}?room=${msg.room.code}`);
       saveMultiplayerSession(msg.room.code, { token: msg.token, playerId: msg.playerId, name: mpName.trim() });
       if (msg.game) {
         setIsOnlineGame(true);
@@ -1276,6 +1295,16 @@ export default function UpDownRiverGame() {
     connectMultiplayer({ type: "join", name, code, token: saved?.token });
   }
 
+  async function copyRoomLink() {
+    if (!mpShareUrl) return;
+    try {
+      await navigator.clipboard.writeText(mpShareUrl);
+      setMpCopyStatus("Copied link");
+    } catch {
+      setMpCopyStatus(mpShareUrl);
+    }
+  }
+
   function startGame() {
     setCopyStatus("");
     setIsOnlineGame(false);
@@ -1306,6 +1335,7 @@ export default function UpDownRiverGame() {
       socketRef.current?.close();
       setIsOnlineGame(false);
     }
+    window.history.replaceState(null, "", window.location.pathname);
     setScreen("start");
   }
 
@@ -1380,9 +1410,13 @@ export default function UpDownRiverGame() {
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold">Online Multiplayer</h2>
-                  <p className="text-sm text-slate-400">Create a room, share the 4-character code, and reconnect with the same browser if you drop.</p>
+                  <p className="text-sm text-slate-400">Create a room, share the link, and reconnect with the same browser if you drop.</p>
+                  <p className="mt-1 break-all font-mono text-[11px] text-slate-600">Server: {multiplayerHttpUrl()}</p>
                 </div>
-                <Badge tone={mpConnected ? "green" : "slate"}>{mpConnected ? "Connected" : "Offline"}</Badge>
+                <div className="flex flex-wrap gap-2">
+                  {mpRoom?.serverId && <Badge>Server {mpRoom.serverId}</Badge>}
+                  <Badge tone={mpConnected ? "green" : "slate"}>{mpConnected ? "Connected" : "Offline"}</Badge>
+                </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-[1fr_0.7fr_auto_auto]">
@@ -1401,8 +1435,8 @@ export default function UpDownRiverGame() {
                   </select>
                 </label>
                 <div className="grid grid-cols-2 gap-2 md:flex md:items-end">
-                  <button type="button" onClick={createMultiplayerRoom} className="rounded-xl bg-white px-4 py-2 font-semibold text-slate-950 hover:bg-slate-200">Create</button>
-                  <button type="button" onClick={joinMultiplayerRoom} className="rounded-xl border border-white/10 bg-slate-800 px-4 py-2 font-semibold text-slate-100 hover:bg-slate-700">Join</button>
+                  <button type="button" disabled={mpBusy} onClick={createMultiplayerRoom} className="rounded-xl bg-white px-4 py-2 font-semibold text-slate-950 hover:bg-slate-200 disabled:opacity-50">{mpBusy ? "..." : "Create"}</button>
+                  <button type="button" disabled={mpBusy} onClick={joinMultiplayerRoom} className="rounded-xl border border-white/10 bg-slate-800 px-4 py-2 font-semibold text-slate-100 hover:bg-slate-700 disabled:opacity-50">Join</button>
                 </div>
               </div>
 
@@ -1414,8 +1448,10 @@ export default function UpDownRiverGame() {
                     <div>
                       <div className="text-xs uppercase tracking-widest text-slate-500">Room code</div>
                       <div className="font-mono text-4xl font-black tracking-[0.35em] text-white">{mpRoom.code}</div>
+                      <div className="mt-1 break-all text-xs text-slate-500">{mpShareUrl}</div>
                     </div>
                     <div className="flex gap-2">
+                      <button type="button" onClick={copyRoomLink} className="rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm hover:bg-slate-700">Copy link</button>
                       {mpRoom.hostId === mpPlayerId && (
                         <>
                           <button type="button" onClick={() => sendMultiplayer({ type: "addBot" })} className="rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm hover:bg-slate-700">Add bot</button>
@@ -1425,6 +1461,7 @@ export default function UpDownRiverGame() {
                       )}
                     </div>
                   </div>
+                  {mpCopyStatus && <div className="mb-3 text-xs text-slate-400">{mpCopyStatus}</div>}
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {mpRoom.seats.map((seat) => (
                       <div key={seat.id} className="rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
