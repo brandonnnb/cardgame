@@ -163,7 +163,61 @@ function botBanterLine(game, playerIndex, event, context = {}) {
   const bid = context.bid ?? player.bid ?? 0;
   const highBid = bid >= Math.max(3, Math.ceil(game.handSize * 0.6));
   const bigCard = context.card && (context.card.value >= 12 || context.card.joker || isTrump(context.card, game.trumpSuit));
-  const lines = {
+  const isTrumpMode = game.settings?.botMode === "trump";
+  const lines = isTrumpMode ? {
+    bid: [
+      `${bid}. Nobody bids better than me. Nobody.`,
+      `I'm bidding ${bid}, and it's going to be TREMENDOUS, believe me.`,
+      `${bid}. I looked at this hand and said, "That's a beautiful hand."`,
+      `Many people are saying my ${bid} is the greatest bid they've ever seen.`,
+      `They say I can smuggle a ${bid}. I don't say that, but that's what they say.`,
+      `${bid}. The fake news media will say it's a bad bid. Wrong.`,
+      `${bid}. I know cards. I know them better than anybody. It's true.`,
+      highBid ? "They say I have 3 red kings. I don't say that, but that's what they say." : null,
+      highBid ? "HUGE bid. Possibly the biggest bid in the history of this game." : null,
+      highBid ? "I am about to be everyone's problem. Tremendous." : null,
+      bid === 0 ? "Zero. Strategic genius. The fake news won't cover it." : null,
+      bid === 0 ? "Nil bid. I call it a perfect nil. Nobody nils like me." : null,
+    ],
+    play: [
+      `That card is beautiful. Very powerful. The best card.`,
+      `Nobody plays cards like me. Nobody. It's true.`,
+      `I just made this game great again.`,
+      `Believe me, this play is tremendous. Many people are saying it.`,
+      `I play this card and everyone claps. True story.`,
+      `This is either a perfect play or a perfect play. We will know shortly.`,
+      `That should inconvenience the losers. Sad!`,
+      bigCard ? "They said it couldn't be done. It can be done." : null,
+      context.card?.joker ? "The joker. Very powerful card. I love jokers." : null,
+      context.isTrump ? "Trump card. I'm the only one who can play it. Believe me." : null,
+    ],
+    trick: [
+      `I win tricks. That's what I do. I win. Always.`,
+      `Another WIN. I win so much, people get tired of it.`,
+      `That's what winning looks like. You're welcome.`,
+      `TREMENDOUS trick. The best. Maybe ever.`,
+      `WINNER. That's what they call me. It's true.`,
+      `I've been winning tricks since before you were born.`,
+      `That trick had my name on it. In gold letters. Big letters.`,
+      `You brought vibes to a maths fight. Very unfair. Sad!`,
+    ],
+    exact: [
+      `Exact bid. I said it, I did it. That's what I do.`,
+      `Perfect score. Like everything I do. Perfect.`,
+      `Nobody hits their bid like me. Nobody. It's a fact.`,
+      `I told you I'd get it. I always get it right. Always.`,
+      `That is called precision. You may clap. Loudly.`,
+    ],
+    miss: [
+      `The cards were rigged. Totally rigged. Sad!`,
+      `That was sabotage. I'm calling for a full investigation.`,
+      `The dealer is corrupt. Absolutely corrupt. Everyone knows it.`,
+      `Fake result. We've seen this before. Total witch hunt.`,
+      `This is the greatest witch hunt in the history of card games.`,
+      `I reject these numbers. The real numbers are beautiful. Believe me.`,
+      `I am filing a formal complaint. Many people agree with me.`,
+    ],
+  } : {
     bid: [
       `I reckon I can smuggle a ${bid}.`,
       `${bid}. I have made worse promises with more confidence.`,
