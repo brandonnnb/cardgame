@@ -698,7 +698,7 @@ function submitBid(game, bid) {
   const msg = `${nextPlayers[playerIndex].name} bids ${bid}.`;
   const bidTotal = nextPlayers.reduce((sum, p) => sum + (p.bid ?? 0), 0);
   const auditEntry = `  ${nextPlayers[playerIndex].name} bids ${bid}. Legal bids: ${legal.join(", ")}. Total bids now ${bidTotal}/${game.handSize}.`;
-  const banter = Math.random() < 0.72 ? botBanterLine({ ...game, players: nextPlayers }, playerIndex, "bid", { bid }) : null;
+  const banter = Math.random() < 0.22 ? botBanterLine({ ...game, players: nextPlayers }, playerIndex, "bid", { bid }) : null;
 
   if (nextBidIndex >= order.length) {
     const lead = (game.dealer + 1) % game.players.length;
@@ -744,7 +744,7 @@ function playCard(game, playerIndex, cardId) {
   const nextTrick = [...game.trick, { playerIndex, card }];
   const trickNumber = game.handSize - player.hand.length + 1;
   const currentWinner = winningPlay(nextTrick, game.trumpSuit);
-  const banter = Math.random() < 0.35 ? botBanterLine(game, playerIndex, "play", { card, isTrump: isTrump(card, game.trumpSuit) }) : null;
+  const banter = Math.random() < 0.08 ? botBanterLine(game, playerIndex, "play", { card, isTrump: isTrump(card, game.trumpSuit) }) : null;
   const auditEntry = [
     `  Trick ${trickNumber}, play ${nextTrick.length}/${game.players.length}: ${player.name} plays ${cardText(card)}.`,
     `    Hand before: ${cardsText(player.hand)}.`,
@@ -791,7 +791,7 @@ function resolveTrick(game) {
   ];
 
   if (!empty) {
-    const banter = Math.random() < 0.55 ? botBanterLine({ ...game, players: wonPlayers }, winnerIndex, "trick") : null;
+    const banter = Math.random() < 0.16 ? botBanterLine({ ...game, players: wonPlayers }, winnerIndex, "trick") : null;
     return withBanter({ ...game, players: wonPlayers, trick: [], played: newPlayed, voids: newVoids, lastTrick,
       phase: "playing", turn: winnerIndex,
       log: [`${wonPlayers[winnerIndex].name} wins the trick.`, ...game.log].slice(0, 24),
@@ -800,7 +800,7 @@ function resolveTrick(game) {
 
   const scored = scorePlayers(wonPlayers);
   const roundBanter = scored.map((p, i) => {
-    if (p.isHuman || Math.random() >= 0.65) return null;
+    if (p.isHuman || Math.random() >= 0.18) return null;
     return botBanterLine({ ...game, players: scored }, i, p.bid === p.tricks ? "exact" : "miss");
   });
   const summary = scored.map((p) => ({ name: p.name, bid: p.bid, tricks: p.tricks, roundScore: p.roundScore, score: p.score }));

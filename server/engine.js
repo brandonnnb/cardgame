@@ -334,7 +334,7 @@ function submitBid(game, playerIndex, bid) {
   const players = game.players.map((p, i) => i === playerIndex ? { ...p, bid } : p);
   const bidIndex = game.bidIndex + 1;
   const entry = `  ${players[playerIndex].name} bids ${bid}. Legal bids: ${legal.join(", ")}.`;
-  const banter = Math.random() < 0.72 ? botBanterLine({ ...game, players }, playerIndex, "bid", { bid }) : null;
+  const banter = Math.random() < 0.22 ? botBanterLine({ ...game, players }, playerIndex, "bid", { bid }) : null;
   if (bidIndex >= order.length) {
     const lead = (game.dealer + 1) % players.length;
     return withBanter({ ...game, players, bidIndex, phase: "playing", turn: lead, log: [`${players[playerIndex].name} bids ${bid}. ${players[lead].name} leads.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, entry, `Play begins. ${players[lead].name} leads.`] }, [banter]);
@@ -352,7 +352,7 @@ function playCard(game, playerIndex, cardId) {
   const players = game.players.map((p, i) => i === playerIndex ? { ...p, hand: p.hand.filter((c) => c.id !== cardId) } : p);
   const trick = [...game.trick, { playerIndex, card }];
   const winner = winningPlay(trick, game.trumpSuit);
-  const banter = Math.random() < 0.35 ? botBanterLine(game, playerIndex, "play", { card, isTrump: isTrump(card, game.trumpSuit) }) : null;
+  const banter = Math.random() < 0.08 ? botBanterLine(game, playerIndex, "play", { card, isTrump: isTrump(card, game.trumpSuit) }) : null;
   const audit = [
     `  ${player.name} plays ${cardText(card)}.`,
     `    Legal cards: ${cardsText(options)}.`,
@@ -378,12 +378,12 @@ function resolveTrick(game) {
     `    Tricks: ${players.map((p) => `${p.name} ${p.tricks}/${p.bid}`).join(", ")}.`,
   ];
   if (!empty) {
-    const banter = Math.random() < 0.55 ? botBanterLine({ ...game, players }, winnerIndex, "trick") : null;
+    const banter = Math.random() < 0.16 ? botBanterLine({ ...game, players }, winnerIndex, "trick") : null;
     return withBanter({ ...game, players, trick: [], played, voids, lastTrick, phase: "playing", turn: winnerIndex, log: [`${players[winnerIndex].name} wins the trick.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, ...audit, `  ${players[winnerIndex].name} leads.`] }, [banter]);
   }
   const scored = scorePlayers(players);
   const roundBanter = scored.map((p, i) => {
-    if (!p.isBot || Math.random() >= 0.65) return null;
+    if (!p.isBot || Math.random() >= 0.18) return null;
     return botBanterLine({ ...game, players: scored }, i, p.bid === p.tricks ? "exact" : "miss");
   });
   const summary = scored.map((p) => ({ name: p.name, bid: p.bid, tricks: p.tricks, roundScore: p.roundScore, score: p.score }));
