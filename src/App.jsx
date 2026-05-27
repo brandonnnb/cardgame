@@ -940,6 +940,7 @@ function SettingsControls({ settings, updateSetting, compact = false, action = n
           <option value="parchment">Parchment</option>
           <option value="midnight">Midnight</option>
           <option value="neon">Neon</option>
+          <option value="characters">Characters</option>
         </select>
       </label>
       <label className="space-y-1">
@@ -956,6 +957,24 @@ function SettingsControls({ settings, updateSetting, compact = false, action = n
   );
 }
 
+function characterCardFace(card) {
+  if (card.joker) return { icon: "🃏", name: "Jester", badge: "wild" };
+  const suitCharacters = {
+    "♠": { K: "🛡️", Q: "🦉", J: "🗡️", A: "👑", face: "Knight" },
+    "♥": { K: "🦁", Q: "🌹", J: "🎭", A: "💘", face: "Royal" },
+    "♦": { K: "🐉", Q: "💎", J: "🧭", A: "🔮", face: "Mage" },
+    "♣": { K: "🌲", Q: "🦊", J: "🍀", A: "🌿", face: "Rogue" },
+  };
+  const set = suitCharacters[card.suit] ?? suitCharacters["♠"];
+  if (["A", "K", "Q", "J"].includes(card.rank)) return { icon: set[card.rank], name: `${card.rank} ${set.face}`, badge: card.suit };
+  return { icon: card.suit, name: `${card.rank} ${SUIT_NAME[card.suit]}`, badge: card.rank };
+}
+
+function pipCount(card) {
+  if (card.joker || card.value > 10) return 0;
+  return Math.max(2, Math.min(10, card.value));
+}
+
 function CardButton({ card, disabled, onClick, small = false, highlighted = false, viewing = false, faded = false, outcome = null, winning = false, engine = false }) {
   const { cardTheme = "classic" } = React.useContext(ThemeContext);
   const cardStyles = {
@@ -963,9 +982,13 @@ function CardButton({ card, disabled, onClick, small = false, highlighted = fals
     parchment: { base: "bg-amber-50 text-stone-950 border-amber-300", black: "text-stone-950", red: "text-rose-700", suit: "drop-shadow-sm" },
     midnight: { base: "bg-slate-950 text-slate-100 border-indigo-300", black: "text-slate-100", red: "text-pink-300", suit: "drop-shadow-[0_0_8px_rgba(129,140,248,0.45)]" },
     neon: { base: "bg-zinc-950 text-cyan-100 border-cyan-300 shadow-cyan-500/20", black: "text-cyan-100", red: "text-fuchsia-300", suit: "drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" },
+    characters: { base: "bg-gradient-to-br from-amber-50 via-white to-sky-50 text-slate-950 border-amber-300", black: "text-slate-900", red: "text-rose-700", suit: "drop-shadow-sm" },
   };
   const cardStyle = cardStyles[cardTheme] ?? cardStyles.classic;
   const rankColor = isRed(card) ? cardStyle.red : cardStyle.black;
+  const expressive = cardTheme === "characters";
+  const character = expressive ? characterCardFace(card) : null;
+  const pips = expressive ? Array.from({ length: pipCount(card) }, (_, i) => i) : [];
   let ringClass;
   if (winning) {
     ringClass = "border-emerald-400 ring-2 ring-emerald-400/70 ring-offset-2 ring-offset-slate-900 shadow-emerald-400/40 shadow-lg";
@@ -995,7 +1018,23 @@ function CardButton({ card, disabled, onClick, small = false, highlighted = fals
       ].join(" ")}
       title={cardText(card)}
     >
-      {card.joker ? (
+      {expressive ? (
+        <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden px-1 text-center">
+          <span className={`absolute left-1 top-1 font-black leading-none ${small ? "text-[10px]" : "text-xs"} ${rankColor}`}>{card.joker ? "J" : card.rank}</span>
+          <span className={`absolute right-1 top-1 leading-none ${small ? "text-[10px]" : "text-xs"} ${rankColor}`}>{card.joker ? "★" : card.suit}</span>
+          {pips.length ? (
+            <div className={`grid w-full grid-cols-2 place-items-center gap-0.5 px-2 ${small ? "text-[10px]" : "text-sm"} ${rankColor}`}>
+              {pips.map((i) => <span key={i} className="leading-none">{card.suit}</span>)}
+            </div>
+          ) : (
+            <>
+              <div className={`${small ? "text-2xl" : "text-4xl"} leading-none`}>{character.icon}</div>
+              {!small && <div className="mt-1 max-w-full truncate rounded-full bg-slate-900/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-slate-700">{character.name}</div>}
+            </>
+          )}
+          <span className={`absolute bottom-1 right-1 rotate-180 font-black leading-none ${small ? "text-[10px]" : "text-xs"} ${rankColor}`}>{card.joker ? "J" : card.rank}</span>
+        </div>
+      ) : card.joker ? (
         <div className="flex h-full flex-col items-center justify-center gap-1 px-1 text-center">
           <span className="text-2xl">🃏</span>
           <span className="text-[10px] font-bold uppercase tracking-wide">Joker</span>
