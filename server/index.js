@@ -203,6 +203,9 @@ function createRoom(ws, data) {
     botSpeed: 450,
     helper: false,
     samples: Number(data.settings?.samples ?? 120),
+    colorTheme: String(data.settings?.colorTheme ?? "river"),
+    cardTheme: String(data.settings?.cardTheme ?? "classic"),
+    winAnimation: String(data.settings?.winAnimation ?? "confetti"),
   };
   const now = Date.now();
   const room = { code, hostId: seat.id, status: "lobby", settings, seats: [seat], game: null, botTimer: null, createdAt: now, updatedAt: now };

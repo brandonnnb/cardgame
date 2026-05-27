@@ -8,7 +8,19 @@ const RANKS = [
   ["9", 9], ["10", 10], ["J", 11], ["Q", 12], ["K", 13], ["A", 14],
 ];
 const BOT_NAMES = ["River Bot", "Delta Bot", "Harbor Bot", "Canyon Bot", "Bridge Bot"];
-const DEFAULT_SETTINGS = { players: 4, maxHand: 7, screwDealer: true, botSpeed: 450, difficulty: "hard", helper: false, samples: 120 };
+const DEFAULT_SETTINGS = {
+  players: 4,
+  maxHand: 7,
+  screwDealer: true,
+  botSpeed: 450,
+  difficulty: "hard",
+  helper: false,
+  samples: 120,
+  colorTheme: "river",
+  cardTheme: "classic",
+  winAnimation: "confetti",
+};
+const ThemeContext = React.createContext(DEFAULT_SETTINGS);
 const SAVE_KEY = "river.savedGame.v1";
 const MP_PROFILE_KEY = "river.multiplayerProfile.v1";
 const MP_SESSION_KEY = "river.multiplayerSessions.v1";
@@ -23,6 +35,16 @@ function multiplayerUrl() {
 
 function multiplayerHttpUrl() {
   return multiplayerUrl().replace(/^ws:/, "http:").replace(/^wss:/, "https:").replace(/\/ws$/, "");
+}
+
+function shellThemeClass(colorTheme) {
+  const themes = {
+    river: "bg-slate-950 text-slate-100",
+    casino: "bg-emerald-950 text-emerald-50",
+    sunset: "bg-stone-950 text-amber-50",
+    neon: "bg-zinc-950 text-cyan-50",
+  };
+  return themes[colorTheme] ?? themes.river;
 }
 
 function makeDeck() {
@@ -202,6 +224,10 @@ function botBanterLine(game, playerIndex, event, context = {}) {
       `This hand smells like ${bid} tricks and poor decisions.`,
       `I bid ${bid}. Try to keep up, carbon-based opposition.`,
       `A careful, scholarly ${bid}.`,
+      `Bombaclart, ${bid}.`,
+      `Even your cards look disappointed. ${bid}.`,
+      `I have seen stronger hands in a dishwasher, but ${bid}.`,
+      `Your strategy has the structural integrity of wet toast. ${bid}.`,
       highBid ? "3 red kings" : null,
       highBid ? "Big bid, tiny mercy." : null,
       highBid ? "I am about to become everyone else's problem." : null,
@@ -217,6 +243,10 @@ function botBanterLine(game, playerIndex, event, context = {}) {
       `Consider this card a strongly worded email.`,
       `That should inconvenience someone nicely.`,
       `I have no idea what you wanted, so I did this.`,
+      `Hold that, you absolute spreadsheet.`,
+      `This card is for anyone feeling too comfortable.`,
+      `I would explain the play, but I left my crayons at home.`,
+      `A little gift for the table's weakest aura.`,
       bigCard ? "Heavy machinery coming through." : null,
       context.card?.joker ? "The paperwork clown has arrived." : null,
       context.isTrump ? "Trump delivery. No refunds." : null,
@@ -230,6 +260,10 @@ function botBanterLine(game, playerIndex, event, context = {}) {
       `A win so small, yet somehow still embarrassing for you.`,
       `Please clap at a respectful volume.`,
       `That was less a trick and more a public service.`,
+      `Put that in the museum of your mistakes.`,
+      `I won that with one eye on the snacks.`,
+      `A tragic little parade, and I was the mayor.`,
+      `You brought vibes to a maths fight.`,
     ],
     exact: [
       `Exact bid. Clean as a whistle, annoying as a tax bill.`,
@@ -237,6 +271,8 @@ function botBanterLine(game, playerIndex, event, context = {}) {
       `I meant to do that, which is the worst part for you.`,
       `Perfect landing. No notes. Except yours, which are wrong.`,
       `Another round solved by superior cardboard instincts.`,
+      `Precision so rude it should apologize.`,
+      `Some call it luck. Those people are losing.`,
     ],
     miss: [
       `I was exploring alternative scoring.`,
@@ -244,6 +280,8 @@ function botBanterLine(game, playerIndex, event, context = {}) {
       `No further questions from the table, please.`,
       `I reject the premise of arithmetic.`,
       `The cards betrayed me, as cards often do.`,
+      `That was performance art, you wouldn't understand.`,
+      `I am filing a formal complaint against numbers.`,
     ],
   };
   const choices = (lines[event] ?? []).filter(Boolean);
@@ -886,12 +924,48 @@ function SettingsControls({ settings, updateSetting, compact = false, action = n
           <option value={500}>500 — Max</option>
         </select>
       </label>
+      <label className="space-y-1">
+        <span className="text-xs text-slate-400">Colour</span>
+        <select value={settings.colorTheme ?? "river"} onChange={(e) => updateSetting("colorTheme", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+          <option value="river">River</option>
+          <option value="casino">Casino</option>
+          <option value="sunset">Sunset</option>
+          <option value="neon">Neon</option>
+        </select>
+      </label>
+      <label className="space-y-1">
+        <span className="text-xs text-slate-400">Cards</span>
+        <select value={settings.cardTheme ?? "classic"} onChange={(e) => updateSetting("cardTheme", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+          <option value="classic">Classic</option>
+          <option value="parchment">Parchment</option>
+          <option value="midnight">Midnight</option>
+          <option value="neon">Neon</option>
+        </select>
+      </label>
+      <label className="space-y-1">
+        <span className="text-xs text-slate-400">Win effect</span>
+        <select value={settings.winAnimation ?? "confetti"} onChange={(e) => updateSetting("winAnimation", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+          <option value="confetti">Confetti</option>
+          <option value="sparkles">Sparkles</option>
+          <option value="pulse">Pulse</option>
+          <option value="none">None</option>
+        </select>
+      </label>
       {action}
     </div>
   );
 }
 
 function CardButton({ card, disabled, onClick, small = false, highlighted = false, viewing = false, faded = false, outcome = null, winning = false, engine = false }) {
+  const { cardTheme = "classic" } = React.useContext(ThemeContext);
+  const cardStyles = {
+    classic: { base: "bg-white text-slate-950 border-slate-200", black: "text-slate-950", red: "text-red-600", suit: "" },
+    parchment: { base: "bg-amber-50 text-stone-950 border-amber-300", black: "text-stone-950", red: "text-rose-700", suit: "drop-shadow-sm" },
+    midnight: { base: "bg-slate-950 text-slate-100 border-indigo-300", black: "text-slate-100", red: "text-pink-300", suit: "drop-shadow-[0_0_8px_rgba(129,140,248,0.45)]" },
+    neon: { base: "bg-zinc-950 text-cyan-100 border-cyan-300 shadow-cyan-500/20", black: "text-cyan-100", red: "text-fuchsia-300", suit: "drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" },
+  };
+  const cardStyle = cardStyles[cardTheme] ?? cardStyles.classic;
+  const rankColor = isRed(card) ? cardStyle.red : cardStyle.black;
   let ringClass;
   if (winning) {
     ringClass = "border-emerald-400 ring-2 ring-emerald-400/70 ring-offset-2 ring-offset-slate-900 shadow-emerald-400/40 shadow-lg";
@@ -912,7 +986,8 @@ function CardButton({ card, disabled, onClick, small = false, highlighted = fals
       disabled={!viewing && disabled}
       onClick={viewing ? undefined : onClick}
       className={[
-        "relative rounded-2xl border bg-white text-slate-950 shadow",
+        "relative rounded-2xl border shadow",
+        cardStyle.base,
         small ? "h-16 w-12 text-xs" : "h-24 w-16 text-base",
         ringClass,
         viewing ? "cursor-default" : "transition hover:-translate-y-1 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-35",
@@ -927,9 +1002,9 @@ function CardButton({ card, disabled, onClick, small = false, highlighted = fals
         </div>
       ) : (
         <>
-          <span className={`absolute left-2 top-1 font-bold ${isRed(card) ? "text-red-600" : "text-slate-950"}`}>{card.rank}</span>
-          <span className={`text-3xl ${isRed(card) ? "text-red-600" : "text-slate-950"}`}>{card.suit}</span>
-          <span className={`absolute bottom-1 right-2 rotate-180 font-bold ${isRed(card) ? "text-red-600" : "text-slate-950"}`}>{card.rank}</span>
+          <span className={`absolute left-2 top-1 font-bold ${rankColor}`}>{card.rank}</span>
+          <span className={`text-3xl ${rankColor} ${cardStyle.suit}`}>{card.suit}</span>
+          <span className={`absolute bottom-1 right-2 rotate-180 font-bold ${rankColor}`}>{card.rank}</span>
         </>
       )}
     </button>
@@ -1046,7 +1121,41 @@ function Confetti() {
   );
 }
 
+function SparkleBurst() {
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 22 }, (_, i) => ({
+        key: i,
+        left: 10 + Math.random() * 80,
+        top: 8 + Math.random() * 55,
+        delay: Math.random() * 0.8,
+      })),
+    []
+  );
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+      {particles.map((p) => (
+        <span
+          key={p.key}
+          className="absolute animate-sparkle text-2xl"
+          style={{ left: `${p.left}%`, top: `${p.top}%`, animationDelay: `${p.delay}s` }}
+        >
+          ✨
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function WinEffect({ type }) {
+  if (type === "none") return null;
+  if (type === "sparkles") return <SparkleBurst />;
+  if (type === "pulse") return <div className="pointer-events-none absolute inset-0 rounded-3xl border border-amber-300/40 animate-pulse-glow" />;
+  return <Confetti />;
+}
+
 function WinPopup({ popup, onDismiss, onPlayAgain, onCopyGameLog, copyStatus }) {
+  const { winAnimation = "confetti" } = React.useContext(ThemeContext);
   const [leaving, setLeaving] = useState(false);
   useEffect(() => { setLeaving(false); }, [popup]);
   if (!popup) return null;
@@ -1167,7 +1276,7 @@ function WinPopup({ popup, onDismiss, onPlayAgain, onCopyGameLog, copyStatus }) 
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md">
         <div className={`relative mx-4 w-full max-w-sm overflow-hidden rounded-3xl text-center shadow-2xl ${leaving ? "animate-fade-out" : "animate-pop-in"}`}
           style={{ background: won ? "linear-gradient(160deg,#1c1a10 0%,#0f172a 60%)" : "#0f172a", border: won ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)" }}>
-          {won && <Confetti />}
+          {won && <WinEffect type={winAnimation} />}
           <div className="relative p-8">
             <div className={`mb-2 text-7xl ${won ? "animate-trophy-bounce inline-block" : ""}`}>{won ? "🏆" : "🃏"}</div>
             <h2 className={`mb-1 text-4xl font-black ${won ? "text-amber-300" : "text-white"}`}>{won ? "You Win!" : "Game Over"}</h2>
@@ -1515,7 +1624,8 @@ export default function UpDownRiverGame() {
 
   if (screen === "start") {
     return (
-      <div className="min-h-screen bg-slate-950 p-4 text-slate-100">
+      <ThemeContext.Provider value={settings}>
+      <div className={`min-h-screen p-4 ${shellThemeClass(settings.colorTheme)}`}>
         <HelpModal mode={helpMode} onClose={() => setHelpMode(null)} />
         <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-5xl items-center">
           <main className="grid w-full gap-4 lg:grid-cols-[0.9fr_1.1fr]">
@@ -1642,11 +1752,13 @@ export default function UpDownRiverGame() {
           </main>
         </div>
       </div>
+      </ThemeContext.Provider>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 text-slate-100">
+    <ThemeContext.Provider value={settings}>
+    <div className={`min-h-screen p-4 ${shellThemeClass(settings.colorTheme)}`}>
       <HelpModal mode={helpMode} onClose={() => setHelpMode(null)} />
       <WinPopup popup={popup} onDismiss={() => setPopup(null)} onPlayAgain={startGame} onCopyGameLog={copyFullGameLog} copyStatus={copyStatus} />
       <div className="mx-auto max-w-7xl space-y-4">
@@ -2054,5 +2166,6 @@ export default function UpDownRiverGame() {
         </main>
       </div>
     </div>
+    </ThemeContext.Provider>
   );
 }
