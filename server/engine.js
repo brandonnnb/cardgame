@@ -157,7 +157,79 @@ function formatScoreboard(players) {
   return players.map((p) => `${p.name}: bid ${p.bid ?? "-"}, tricks ${p.tricks}, round +${p.roundScore ?? 0}, total ${p.score}`).join(" | ");
 }
 
-function dealRound(basePlayers, settings, sequence, roundIndex, oldLog = [], oldAuditLog = []) {
+function botBanterLine(game, playerIndex, event, context = {}) {
+  const player = game.players[playerIndex];
+  if (!player?.isBot) return null;
+  const bid = context.bid ?? player.bid ?? 0;
+  const highBid = bid >= Math.max(3, Math.ceil(game.handSize * 0.6));
+  const bigCard = context.card && (context.card.value >= 12 || context.card.joker || isTrump(context.card, game.trumpSuit));
+  const lines = {
+    bid: [
+      `I reckon I can smuggle a ${bid}.`,
+      `${bid}. I have made worse promises with more confidence.`,
+      `${bid}. Write that down before I deny it.`,
+      `${bid}, and not a single one of you can stop me. Probably.`,
+      `I am legally advised to bid ${bid}.`,
+      `I have consulted the river and it said ${bid}.`,
+      `This hand smells like ${bid} tricks and poor decisions.`,
+      `I bid ${bid}. Try to keep up, carbon-based opposition.`,
+      `A careful, scholarly ${bid}.`,
+      highBid ? "3 red kings" : null,
+      highBid ? "Big bid, tiny mercy." : null,
+      highBid ? "I am about to become everyone else's problem." : null,
+      bid === 0 ? "Zero. I shall be hiding under the table." : null,
+      bid === 0 ? "Nil bid. Cowardice, but make it tactical." : null,
+    ],
+    play: [
+      `Try not to gasp; it ruins the atmosphere.`,
+      `I found this card behind your confidence.`,
+      `A humble offering from my enormous brain.`,
+      `This is either genius or admin. We will know shortly.`,
+      `I play this with the grace of a falling cupboard.`,
+      `Consider this card a strongly worded email.`,
+      `That should inconvenience someone nicely.`,
+      `I have no idea what you wanted, so I did this.`,
+      bigCard ? "Heavy machinery coming through." : null,
+      context.card?.joker ? "The paperwork clown has arrived." : null,
+      context.isTrump ? "Trump delivery. No refunds." : null,
+    ],
+    trick: [
+      `Mine. I will be framing that trick.`,
+      `Thank you all for attending my demonstration.`,
+      `Another donation to the bot foundation.`,
+      `That trick had my name on it in permanent marker.`,
+      `I accept this trick on behalf of people with standards.`,
+      `A win so small, yet somehow still embarrassing for you.`,
+      `Please clap at a respectful volume.`,
+      `That was less a trick and more a public service.`,
+    ],
+    exact: [
+      `Exact bid. Clean as a whistle, annoying as a tax bill.`,
+      `That is called precision. You may clap quietly.`,
+      `I meant to do that, which is the worst part for you.`,
+      `Perfect landing. No notes. Except yours, which are wrong.`,
+      `Another round solved by superior cardboard instincts.`,
+    ],
+    miss: [
+      `I was exploring alternative scoring.`,
+      `That round was a clerical error.`,
+      `No further questions from the table, please.`,
+      `I reject the premise of arithmetic.`,
+      `The cards betrayed me, as cards often do.`,
+    ],
+  };
+  const choices = (lines[event] ?? []).filter(Boolean);
+  if (!choices.length) return null;
+  return { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, speaker: player.name, text: choices[Math.floor(Math.random() * choices.length)], event };
+}
+
+function withBanter(game, entries) {
+  const next = entries.filter(Boolean);
+  if (!next.length) return game;
+  return { ...game, banter: [...next, ...(game.banter ?? [])].slice(0, 12) };
+}
+
+function dealRound(basePlayers, settings, sequence, roundIndex, oldLog = [], oldAuditLog = [], oldBanter = []) {
   const activePlayers = basePlayers.filter((p) => !p.removed);
   const n = activePlayers.length;
   const nextSettings = { ...settings, players: n, maxHand: Math.min(settings.maxHand, maxAllowedHand(n)) };
@@ -196,6 +268,7 @@ function dealRound(basePlayers, settings, sequence, roundIndex, oldLog = [], old
     summary: null,
     log: [roundHeader, ...oldLog].slice(0, 24),
     auditLog: [...oldAuditLog, "", roundHeader, "Hands:", ...players.map((p) => `  ${p.name}: ${cardsText(p.hand)}`), `Undealt stock after trump: ${cardsText(deck)}`, "Bidding:"],
+    banter: oldBanter,
   };
 }
 
@@ -220,7 +293,7 @@ function createGame(settings, seats) {
     `Settings: players ${cleanSettings.players}, max hand ${cleanSettings.maxHand}, screw the dealer ${cleanSettings.screwDealer ? "on" : "off"}, difficulty ${cleanSettings.difficulty}.`,
     `Players: ${players.map((p) => p.name).join(", ")}`,
   ];
-  return dealRound(players, cleanSettings, sequence, 0, [], auditLog);
+  return dealRound(players, cleanSettings, sequence, 0, [], auditLog, []);
 }
 
 function chooseBidBot(game, playerIndex) {
@@ -261,11 +334,12 @@ function submitBid(game, playerIndex, bid) {
   const players = game.players.map((p, i) => i === playerIndex ? { ...p, bid } : p);
   const bidIndex = game.bidIndex + 1;
   const entry = `  ${players[playerIndex].name} bids ${bid}. Legal bids: ${legal.join(", ")}.`;
+  const banter = Math.random() < 0.72 ? botBanterLine({ ...game, players }, playerIndex, "bid", { bid }) : null;
   if (bidIndex >= order.length) {
     const lead = (game.dealer + 1) % players.length;
-    return { ...game, players, bidIndex, phase: "playing", turn: lead, log: [`${players[playerIndex].name} bids ${bid}. ${players[lead].name} leads.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, entry, `Play begins. ${players[lead].name} leads.`] };
+    return withBanter({ ...game, players, bidIndex, phase: "playing", turn: lead, log: [`${players[playerIndex].name} bids ${bid}. ${players[lead].name} leads.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, entry, `Play begins. ${players[lead].name} leads.`] }, [banter]);
   }
-  return { ...game, players, bidIndex, turn: order[bidIndex], log: [`${players[playerIndex].name} bids ${bid}.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, entry] };
+  return withBanter({ ...game, players, bidIndex, turn: order[bidIndex], log: [`${players[playerIndex].name} bids ${bid}.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, entry] }, [banter]);
 }
 
 function playCard(game, playerIndex, cardId) {
@@ -278,15 +352,16 @@ function playCard(game, playerIndex, cardId) {
   const players = game.players.map((p, i) => i === playerIndex ? { ...p, hand: p.hand.filter((c) => c.id !== cardId) } : p);
   const trick = [...game.trick, { playerIndex, card }];
   const winner = winningPlay(trick, game.trumpSuit);
+  const banter = Math.random() < 0.35 ? botBanterLine(game, playerIndex, "play", { card, isTrump: isTrump(card, game.trumpSuit) }) : null;
   const audit = [
     `  ${player.name} plays ${cardText(card)}.`,
     `    Legal cards: ${cardsText(options)}.`,
     `    Current winner: ${players[winner.playerIndex].name} with ${cardText(winner.card)}.`,
   ];
   if (trick.length < players.length) {
-    return { ...game, players, trick, turn: (playerIndex + 1) % players.length, log: [`${player.name} plays ${cardText(card)}.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, ...audit] };
+    return withBanter({ ...game, players, trick, turn: (playerIndex + 1) % players.length, log: [`${player.name} plays ${cardText(card)}.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, ...audit] }, [banter]);
   }
-  return { ...game, players, trick, phase: "trickPause", turn: null, log: [`${player.name} plays ${cardText(card)}.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, ...audit] };
+  return withBanter({ ...game, players, trick, phase: "trickPause", turn: null, log: [`${player.name} plays ${cardText(card)}.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, ...audit] }, [banter]);
 }
 
 function resolveTrick(game) {
@@ -303,9 +378,14 @@ function resolveTrick(game) {
     `    Tricks: ${players.map((p) => `${p.name} ${p.tricks}/${p.bid}`).join(", ")}.`,
   ];
   if (!empty) {
-    return { ...game, players, trick: [], played, voids, lastTrick, phase: "playing", turn: winnerIndex, log: [`${players[winnerIndex].name} wins the trick.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, ...audit, `  ${players[winnerIndex].name} leads.`] };
+    const banter = Math.random() < 0.55 ? botBanterLine({ ...game, players }, winnerIndex, "trick") : null;
+    return withBanter({ ...game, players, trick: [], played, voids, lastTrick, phase: "playing", turn: winnerIndex, log: [`${players[winnerIndex].name} wins the trick.`, ...game.log].slice(0, 24), auditLog: [...game.auditLog, ...audit, `  ${players[winnerIndex].name} leads.`] }, [banter]);
   }
   const scored = scorePlayers(players);
+  const roundBanter = scored.map((p, i) => {
+    if (!p.isBot || Math.random() >= 0.65) return null;
+    return botBanterLine({ ...game, players: scored }, i, p.bid === p.tricks ? "exact" : "miss");
+  });
   const summary = scored.map((p) => ({ name: p.name, bid: p.bid, tricks: p.tricks, roundScore: p.roundScore, score: p.score }));
   const final = game.roundIndex + 1 >= game.sequence.length || scored.filter((p) => !p.removed).length < 3;
   const nextLog = [...game.auditLog, ...audit, `Round ${game.roundIndex + 1} score: ${formatScoreboard(scored)}.`];
@@ -313,12 +393,12 @@ function resolveTrick(game) {
     nextLog.push("Final standings:");
     nextLog.push(...[...scored].sort((a, b) => b.score - a.score).map((p, i) => `  ${i + 1}. ${p.name}: ${p.score}`));
   }
-  return { ...game, players: scored, trick: [], played, voids, lastTrick, turn: null, phase: final ? "gameEnd" : "roundEnd", summary, log: [`${scored[winnerIndex].name} wins the final trick. Round scored.`, ...game.log].slice(0, 24), auditLog: nextLog };
+  return withBanter({ ...game, players: scored, trick: [], played, voids, lastTrick, turn: null, phase: final ? "gameEnd" : "roundEnd", summary, log: [`${scored[winnerIndex].name} wins the final trick. Round scored.`, ...game.log].slice(0, 24), auditLog: nextLog }, roundBanter);
 }
 
 function nextRound(game) {
   if (game.phase !== "roundEnd") return game;
-  return dealRound(game.players, game.settings, game.sequence, game.roundIndex + 1, game.log, game.auditLog);
+  return dealRound(game.players, game.settings, game.sequence, game.roundIndex + 1, game.log, game.auditLog, game.banter ?? []);
 }
 
 function sanitizeGame(game, playerId) {

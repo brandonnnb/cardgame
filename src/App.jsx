@@ -185,7 +185,84 @@ function formatVoids(voids, players) {
   return entries.length ? entries.join(" | ") : "none";
 }
 
-function dealRound(basePlayers, settings, sequence, roundIndex, oldLog = [], oldAuditLog = []) {
+function botBanterLine(game, playerIndex, event, context = {}) {
+  const player = game.players[playerIndex];
+  if (!player || player.isHuman) return null;
+  const bid = context.bid ?? player.bid ?? 0;
+  const highBid = bid >= Math.max(3, Math.ceil(game.handSize * 0.6));
+  const bigCard = context.card && (context.card.value >= 12 || context.card.joker || isTrump(context.card, game.trumpSuit));
+  const lines = {
+    bid: [
+      `I reckon I can smuggle a ${bid}.`,
+      `${bid}. I have made worse promises with more confidence.`,
+      `${bid}. Write that down before I deny it.`,
+      `${bid}, and not a single one of you can stop me. Probably.`,
+      `I am legally advised to bid ${bid}.`,
+      `I have consulted the river and it said ${bid}.`,
+      `This hand smells like ${bid} tricks and poor decisions.`,
+      `I bid ${bid}. Try to keep up, carbon-based opposition.`,
+      `A careful, scholarly ${bid}.`,
+      highBid ? "3 red kings" : null,
+      highBid ? "Big bid, tiny mercy." : null,
+      highBid ? "I am about to become everyone else's problem." : null,
+      bid === 0 ? "Zero. I shall be hiding under the table." : null,
+      bid === 0 ? "Nil bid. Cowardice, but make it tactical." : null,
+    ],
+    play: [
+      `Try not to gasp; it ruins the atmosphere.`,
+      `I found this card behind your confidence.`,
+      `A humble offering from my enormous brain.`,
+      `This is either genius or admin. We will know shortly.`,
+      `I play this with the grace of a falling cupboard.`,
+      `Consider this card a strongly worded email.`,
+      `That should inconvenience someone nicely.`,
+      `I have no idea what you wanted, so I did this.`,
+      bigCard ? "Heavy machinery coming through." : null,
+      context.card?.joker ? "The paperwork clown has arrived." : null,
+      context.isTrump ? "Trump delivery. No refunds." : null,
+    ],
+    trick: [
+      `Mine. I will be framing that trick.`,
+      `Thank you all for attending my demonstration.`,
+      `Another donation to the bot foundation.`,
+      `That trick had my name on it in permanent marker.`,
+      `I accept this trick on behalf of people with standards.`,
+      `A win so small, yet somehow still embarrassing for you.`,
+      `Please clap at a respectful volume.`,
+      `That was less a trick and more a public service.`,
+    ],
+    exact: [
+      `Exact bid. Clean as a whistle, annoying as a tax bill.`,
+      `That is called precision. You may clap quietly.`,
+      `I meant to do that, which is the worst part for you.`,
+      `Perfect landing. No notes. Except yours, which are wrong.`,
+      `Another round solved by superior cardboard instincts.`,
+    ],
+    miss: [
+      `I was exploring alternative scoring.`,
+      `That round was a clerical error.`,
+      `No further questions from the table, please.`,
+      `I reject the premise of arithmetic.`,
+      `The cards betrayed me, as cards often do.`,
+    ],
+  };
+  const choices = (lines[event] ?? []).filter(Boolean);
+  if (!choices.length) return null;
+  return {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    speaker: player.name,
+    text: choices[Math.floor(Math.random() * choices.length)],
+    event,
+  };
+}
+
+function withBanter(game, entries) {
+  const next = entries.filter(Boolean);
+  if (!next.length) return game;
+  return { ...game, banter: [...next, ...(game.banter ?? [])].slice(0, 12) };
+}
+
+function dealRound(basePlayers, settings, sequence, roundIndex, oldLog = [], oldAuditLog = [], oldBanter = []) {
   const deck = shuffle(makeDeck());
   const handSize = sequence[roundIndex];
   const dealer = roundIndex % settings.players;
@@ -237,6 +314,7 @@ function dealRound(basePlayers, settings, sequence, roundIndex, oldLog = [], old
       ...oldLog,
     ].slice(0, 24),
     auditLog: [...oldAuditLog, ...roundAudit],
+    banter: oldBanter,
   };
 }
 
@@ -249,7 +327,7 @@ function newGame(rawSettings = DEFAULT_SETTINGS) {
     `Settings: players ${settings.players}, max hand ${settings.maxHand}, screw the dealer ${settings.screwDealer ? "on" : "off"}, difficulty ${settings.difficulty}, samples ${settings.samples}.`,
     `Players: ${players.map((p) => p.name).join(", ")}`,
   ];
-  return dealRound(players, settings, sequence, 0, [], auditLog);
+  return dealRound(players, settings, sequence, 0, [], auditLog, []);
 }
 
 function legalCards(hand, trick, trumpSuit) {
@@ -620,10 +698,11 @@ function submitBid(game, bid) {
   const msg = `${nextPlayers[playerIndex].name} bids ${bid}.`;
   const bidTotal = nextPlayers.reduce((sum, p) => sum + (p.bid ?? 0), 0);
   const auditEntry = `  ${nextPlayers[playerIndex].name} bids ${bid}. Legal bids: ${legal.join(", ")}. Total bids now ${bidTotal}/${game.handSize}.`;
+  const banter = Math.random() < 0.72 ? botBanterLine({ ...game, players: nextPlayers }, playerIndex, "bid", { bid }) : null;
 
   if (nextBidIndex >= order.length) {
     const lead = (game.dealer + 1) % game.players.length;
-    return {
+    return withBanter({
       ...game,
       players: nextPlayers,
       phase: "playing",
@@ -631,16 +710,16 @@ function submitBid(game, bid) {
       turn: lead,
       log: [`${msg} ${nextPlayers[lead].name} leads.`, ...game.log].slice(0, 24),
       auditLog: [...(game.auditLog ?? []), auditEntry, `Play begins. ${nextPlayers[lead].name} leads the first trick.`],
-    };
+    }, [banter]);
   }
-  return {
+  return withBanter({
     ...game,
     players: nextPlayers,
     bidIndex: nextBidIndex,
     turn: order[nextBidIndex],
     log: [msg, ...game.log].slice(0, 24),
     auditLog: [...(game.auditLog ?? []), auditEntry],
-  };
+  }, [banter]);
 }
 
 function scorePlayers(ps) {
@@ -665,6 +744,7 @@ function playCard(game, playerIndex, cardId) {
   const nextTrick = [...game.trick, { playerIndex, card }];
   const trickNumber = game.handSize - player.hand.length + 1;
   const currentWinner = winningPlay(nextTrick, game.trumpSuit);
+  const banter = Math.random() < 0.35 ? botBanterLine(game, playerIndex, "play", { card, isTrump: isTrump(card, game.trumpSuit) }) : null;
   const auditEntry = [
     `  Trick ${trickNumber}, play ${nextTrick.length}/${game.players.length}: ${player.name} plays ${cardText(card)}.`,
     `    Hand before: ${cardsText(player.hand)}.`,
@@ -675,20 +755,20 @@ function playCard(game, playerIndex, cardId) {
   ];
 
   if (nextTrick.length < game.players.length) {
-    return {
+    return withBanter({
       ...game,
       players: nextPlayers,
       trick: nextTrick,
       turn: (playerIndex + 1) % game.players.length,
       log: [`${player.name} plays ${cardText(card)}.`, ...game.log].slice(0, 24),
       auditLog: [...(game.auditLog ?? []), ...auditEntry],
-    };
+    }, [banter]);
   }
 
   // Pause to show the completed trick before resolving the winner
-  return { ...game, players: nextPlayers, trick: nextTrick, phase: "trickPause", turn: null,
+  return withBanter({ ...game, players: nextPlayers, trick: nextTrick, phase: "trickPause", turn: null,
     log: [`${player.name} plays ${cardText(card)}.`, ...game.log].slice(0, 24),
-    auditLog: [...(game.auditLog ?? []), ...auditEntry] };
+    auditLog: [...(game.auditLog ?? []), ...auditEntry] }, [banter]);
 }
 
 function resolveTrick(game) {
@@ -711,13 +791,18 @@ function resolveTrick(game) {
   ];
 
   if (!empty) {
-    return { ...game, players: wonPlayers, trick: [], played: newPlayed, voids: newVoids, lastTrick,
+    const banter = Math.random() < 0.55 ? botBanterLine({ ...game, players: wonPlayers }, winnerIndex, "trick") : null;
+    return withBanter({ ...game, players: wonPlayers, trick: [], played: newPlayed, voids: newVoids, lastTrick,
       phase: "playing", turn: winnerIndex,
       log: [`${wonPlayers[winnerIndex].name} wins the trick.`, ...game.log].slice(0, 24),
-      auditLog: [...(game.auditLog ?? []), ...trickAudit, `  ${wonPlayers[winnerIndex].name} leads the next trick.`] };
+      auditLog: [...(game.auditLog ?? []), ...trickAudit, `  ${wonPlayers[winnerIndex].name} leads the next trick.`] }, [banter]);
   }
 
   const scored = scorePlayers(wonPlayers);
+  const roundBanter = scored.map((p, i) => {
+    if (p.isHuman || Math.random() >= 0.65) return null;
+    return botBanterLine({ ...game, players: scored }, i, p.bid === p.tricks ? "exact" : "miss");
+  });
   const summary = scored.map((p) => ({ name: p.name, bid: p.bid, tricks: p.tricks, roundScore: p.roundScore, score: p.score }));
   const final = game.roundIndex + 1 >= game.sequence.length;
   const roundAudit = [
@@ -729,15 +814,15 @@ function resolveTrick(game) {
     roundAudit.push("Final standings:");
     roundAudit.push(...standings.map((p, i) => `  ${i + 1}. ${p.name}: ${p.score}`));
   }
-  return { ...game, players: scored, trick: [], played: newPlayed, voids: newVoids, lastTrick,
+  return withBanter({ ...game, players: scored, trick: [], played: newPlayed, voids: newVoids, lastTrick,
     turn: null, phase: final ? "gameEnd" : "roundEnd", summary,
     log: [`${wonPlayers[winnerIndex].name} wins the final trick. Round scored.`, ...game.log].slice(0, 24),
-    auditLog: [...(game.auditLog ?? []), ...roundAudit] };
+    auditLog: [...(game.auditLog ?? []), ...roundAudit] }, roundBanter);
 }
 
 function nextRound(game) {
   if (game.roundIndex + 1 >= game.sequence.length) return { ...game, phase: "gameEnd" };
-  return dealRound(game.players, game.settings, game.sequence, game.roundIndex + 1, game.log, game.auditLog ?? []);
+  return dealRound(game.players, game.settings, game.sequence, game.roundIndex + 1, game.log, game.auditLog ?? [], game.banter ?? []);
 }
 
 function Badge({ children, tone = "slate" }) {
@@ -1853,6 +1938,20 @@ export default function UpDownRiverGame() {
           </section>
 
           <aside className="space-y-4">
+            <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-slate-400">Table banter</h2>
+              <div className="space-y-2">
+                {(game.banter ?? []).length ? (game.banter ?? []).slice(0, 5).map((line) => (
+                  <div key={line.id} className="rounded-2xl border border-white/8 bg-slate-900/70 px-3 py-2">
+                    <div className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-400">{line.speaker}</div>
+                    <div className="text-sm text-slate-200">“{line.text}”</div>
+                  </div>
+                )) : (
+                  <p className="text-sm text-slate-500">The bots are saving their worst material.</p>
+                )}
+              </div>
+            </div>
+
             <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl">
               <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-slate-400">Leaderboard</h2>
               <div className="overflow-hidden rounded-2xl border border-white/8">
