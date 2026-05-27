@@ -851,6 +851,79 @@ function CardButton({ card, disabled, onClick, small = false, highlighted = fals
   );
 }
 
+function HelpModal({ mode, onClose }) {
+  if (!mode) return null;
+  const isTutorial = mode === "tutorial";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-slate-900 p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-widest text-slate-500">{isTutorial ? "Tutorial" : "Rules"}</div>
+            <h2 className="text-2xl font-black text-white">{isTutorial ? "How to play" : "Rule reference"}</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-sm hover:bg-slate-700">Close</button>
+        </div>
+
+        {isTutorial ? (
+          <div className="space-y-4 text-sm text-slate-300">
+            <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">1. Look at your hand and trump</h3>
+              <p>Each round starts with a hand size and a turned-up trump card. Trump cards beat non-trump cards. If a joker is turned up, the other joker is the only trump.</p>
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">2. Bid how many tricks you will win</h3>
+              <p>If you think your hand can win two tricks, bid 2. Exact bids are worth the most points. Bidding 0 is valid and scores well if you take no tricks.</p>
+              <div className="mt-3 rounded-xl bg-slate-800 p-3 font-mono text-xs text-slate-300">
+                Example: you bid 2. If you win exactly 2 tricks, you score 12 points. If you win 1 or 3, you only score the tricks you took.
+              </div>
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">3. Follow suit, or use trump</h3>
+              <p>The first card played sets the led suit. If you have that suit, you must follow it, but trump is also legal. If you do not have the led suit, you may play anything.</p>
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">4. Win or dodge tricks to hit your bid</h3>
+              <p>The highest card in the led suit wins unless trump is played. The highest trump wins. Your goal is not always to win every trick; it is to land exactly on your bid.</p>
+            </section>
+            <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">5. Hand sizes go down, then back up</h3>
+              <p>A game starts at the max hand size, counts down to 1 card, then climbs back up. Scores accumulate across all rounds.</p>
+            </section>
+          </div>
+        ) : (
+          <div className="grid gap-3 text-sm text-slate-300 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">Rounds</h3>
+              <p>Hands go down from the max hand to 1, then back up to the max hand.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">Bidding</h3>
+              <p>Each player bids the number of tricks they expect to take. Screw the dealer prevents the final bidder from making total bids equal the hand size.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">Legal play</h3>
+              <p>If you have the led suit, you must play that suit or trump. If you are void in the led suit, you may play anything.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">Winning tricks</h3>
+              <p>Highest led suit wins unless trump is played. Highest trump wins the trick.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">Jokers</h3>
+              <p>With suited trump, jokers are 1 of trump. Any suited trump card beats them. If a joker is turned up, the other joker is the only trump and beats everything.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+              <h3 className="mb-2 font-bold text-white">Scoring</h3>
+              <p>Exact bid scores tricks + 10. Exact 0 scores 5. Missed bids score tricks only.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const CONFETTI_COLORS = ["#f59e0b", "#10b981", "#3b82f6", "#ec4899", "#8b5cf6", "#f97316", "#ef4444", "#14b8a6"];
 
 function Confetti() {
@@ -1070,7 +1143,7 @@ export default function UpDownRiverGame() {
   const [mpConnected, setMpConnected] = useState(false);
   const [mpBusy, setMpBusy] = useState(false);
   const [mpCopyStatus, setMpCopyStatus] = useState("");
-  const [rulesOpen, setRulesOpen] = useState(false);
+  const [helpMode, setHelpMode] = useState(null);
   const [popup, setPopup] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
@@ -1331,6 +1404,7 @@ export default function UpDownRiverGame() {
   function returnToStart() {
     setPopup(null);
     setSettingsOpen(false);
+    setHelpMode(null);
     if (isOnlineGame) {
       socketRef.current?.close();
       setIsOnlineGame(false);
@@ -1357,6 +1431,7 @@ export default function UpDownRiverGame() {
   if (screen === "start") {
     return (
       <div className="min-h-screen bg-slate-950 p-4 text-slate-100">
+        <HelpModal mode={helpMode} onClose={() => setHelpMode(null)} />
         <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-5xl items-center">
           <main className="grid w-full gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <section className="flex min-h-80 flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
@@ -1380,6 +1455,12 @@ export default function UpDownRiverGame() {
               <div className="mt-6 grid gap-2">
                 <button type="button" onClick={startGame} className="rounded-xl bg-white px-4 py-3 font-bold text-slate-950 shadow hover:bg-slate-200">
                   New Game
+                </button>
+                <button type="button" onClick={() => setHelpMode("tutorial")} className="rounded-xl border border-white/10 bg-slate-800 px-4 py-3 font-bold text-slate-100 hover:bg-slate-700">
+                  Tutorial
+                </button>
+                <button type="button" onClick={() => setHelpMode("rules")} className="rounded-xl border border-white/10 bg-slate-800 px-4 py-3 font-bold text-slate-100 hover:bg-slate-700">
+                  Rules
                 </button>
                 <button
                   type="button"
@@ -1481,6 +1562,7 @@ export default function UpDownRiverGame() {
 
   return (
     <div className="min-h-screen bg-slate-950 p-4 text-slate-100">
+      <HelpModal mode={helpMode} onClose={() => setHelpMode(null)} />
       <WinPopup popup={popup} onDismiss={() => setPopup(null)} onPlayAgain={startGame} onCopyGameLog={copyFullGameLog} copyStatus={copyStatus} />
       <div className="mx-auto max-w-7xl space-y-4">
         <header className="rounded-3xl border border-white/10 bg-white/10 px-5 py-3 shadow-2xl backdrop-blur">
@@ -1493,6 +1575,9 @@ export default function UpDownRiverGame() {
               {isOnlineGame && <Badge tone="green">Room {mpRoom?.code}</Badge>}
               <button type="button" onClick={returnToStart} className="rounded-xl border border-white/10 bg-slate-900 px-3 py-1.5 text-sm hover:bg-slate-800">
                 Menu
+              </button>
+              <button type="button" onClick={() => setHelpMode("rules")} className="rounded-xl border border-white/10 bg-slate-900 px-3 py-1.5 text-sm hover:bg-slate-800">
+                Rules
               </button>
               <button type="button" onClick={() => setSettingsOpen((v) => !v)} className="rounded-xl border border-white/10 bg-slate-900 px-3 py-1.5 text-sm hover:bg-slate-800">
                 {settingsOpen ? "✕ Close" : "⚙ Settings"}
@@ -1541,26 +1626,10 @@ export default function UpDownRiverGame() {
                         {game.phase === "roundEnd" && "Round over"}
                         {game.phase === "gameEnd" && "Game over"}
                       </div>
-                      <button type="button" onClick={() => setRulesOpen((v) => !v)} className="mt-1 text-[10px] text-slate-500 underline hover:text-slate-300">
-                        {rulesOpen ? "hide rules" : "rules"}
-                      </button>
                     </div>
                   </div>
                 );
               })()}
-
-              {rulesOpen && (
-                <div className="mb-4 rounded-2xl border border-white/10 bg-slate-900/80 p-4 text-sm text-slate-300">
-                  <ul className="list-disc space-y-1 pl-5">
-                    <li>Hands go down from the max hand to 1, then back up to the max hand.</li>
-                    <li>Turned-up suit is trump. If a joker is turned up, the other joker is the only trump.</li>
-                    <li>Two jokers are in the deck. With suited trump, jokers are low trump; with joker trump, the other joker beats everything.</li>
-                    <li>If you have the led suit, you must play it or a trump. If you are void, play anything.</li>
-                    <li>Exact bid scores tricks + 10, except exact 0 scores 5. Missed bids score tricks only.</li>
-                    <li>Screw the dealer prevents the final bidder from making total bids equal the hand size.</li>
-                  </ul>
-                </div>
-              )}
 
               <div className="grid gap-3 md:grid-cols-2">
                 {game.phase === "bidding" ? (
