@@ -1031,76 +1031,82 @@ function Badge({ children, tone = "slate" }) {
 }
 
 function SettingsControls({ settings, updateSetting, compact = false, action = null }) {
+  const sel = "w-full min-w-0 rounded-xl border border-white/10 bg-slate-800 px-3 py-2";
+  const lbl = "min-w-0 space-y-1";
+  const chk = "flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-3 py-2";
+  const grid = compact
+    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10"
+    : "grid-cols-2 lg:grid-cols-5";
   return (
-    <div className={`grid gap-2 text-sm ${compact ? "sm:grid-cols-2 lg:grid-cols-8" : "sm:grid-cols-2"}`}>
-      <label className="space-y-1">
+    <div className={`grid gap-2 text-sm ${grid}`}>
+      <label className={lbl}>
         <span className="text-xs text-slate-400">Players</span>
-        <select value={settings.players} onChange={(e) => updateSetting("players", Number(e.target.value))} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+        <select value={settings.players} onChange={(e) => updateSetting("players", Number(e.target.value))} className={sel}>
           {[3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
       </label>
-      <label className="space-y-1">
+      <label className={lbl}>
         <span className="text-xs text-slate-400">Max hand</span>
-        <select value={settings.maxHand} onChange={(e) => updateSetting("maxHand", Number(e.target.value))} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+        <select value={settings.maxHand} onChange={(e) => updateSetting("maxHand", Number(e.target.value))} className={sel}>
           {Array.from({ length: Math.min(10, maxAllowedHand(settings.players)) - 2 }, (_, i) => i + 3).map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
       </label>
-      <label className="space-y-1">
+      <label className={lbl}>
         <span className="text-xs text-slate-400">Bot personality</span>
-        <select value={settings.botPersonality ?? "river"} onChange={(e) => updateSetting("botPersonality", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
-          <option value="cabbage">CabbageBot — Easy</option>
-          <option value="river">RiverBot — Medium</option>
-          <option value="brandon">BrandonBot — Extreme</option>
-          <option value="trump">Donald Trump — Extreme</option>
+        <select value={settings.botPersonality ?? "river"} onChange={(e) => updateSetting("botPersonality", e.target.value)} className={sel}>
+          <option value="cabbage">Cabbage · Easy</option>
+          <option value="river">River · Medium</option>
+          <option value="brandon">Brandon · Extreme</option>
+          <option value="trump">Trump · Extreme</option>
         </select>
       </label>
-      <label className="space-y-1">
+      <label className={lbl}>
         <span className="text-xs text-slate-400">Bot speed</span>
-        <select value={settings.botSpeed} onChange={(e) => updateSetting("botSpeed", Number(e.target.value))} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+        <select value={settings.botSpeed} onChange={(e) => updateSetting("botSpeed", Number(e.target.value))} className={sel}>
           <option value={250}>Fast</option>
           <option value={450}>Normal</option>
           <option value={750}>Slow</option>
         </select>
       </label>
-      <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+      <label className={chk}>
         <input type="checkbox" checked={settings.screwDealer} onChange={(e) => updateSetting("screwDealer", e.target.checked)} />
-        <span>Screw the dealer</span>
+        <span>Screw dealer</span>
       </label>
-      <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+      <label className={chk}>
         <input type="checkbox" checked={settings.helper} onChange={(e) => updateSetting("helper", e.target.checked)} />
         <span>Helper</span>
       </label>
-      <label className="space-y-1">
+      <label className={lbl}>
         <span className="text-xs text-slate-400">Samples</span>
-        <select value={settings.samples} onChange={(e) => updateSetting("samples", Number(e.target.value))} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
-          <option value={25}>25 — Fast</option>
-          <option value={60}>60 — Normal</option>
-          <option value={120}>120 — Sharp</option>
-          <option value={250}>250 — Strong</option>
-          <option value={500}>500 — Max</option>
+        <select value={settings.samples} onChange={(e) => updateSetting("samples", Number(e.target.value))} className={sel}>
+          <option value={25}>25 · Fast</option>
+          <option value={60}>60 · Normal</option>
+          <option value={120}>120 · Sharp</option>
+          <option value={250}>250 · Strong</option>
+          <option value={500}>500 · Max</option>
         </select>
       </label>
-      <label className="space-y-1">
+      <label className={lbl}>
         <span className="text-xs text-slate-400">Colour</span>
-        <select value={settings.colorTheme ?? "river"} onChange={(e) => updateSetting("colorTheme", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+        <select value={settings.colorTheme ?? "river"} onChange={(e) => updateSetting("colorTheme", e.target.value)} className={sel}>
           <option value="river">River</option>
           <option value="casino">Casino</option>
           <option value="sunset">Sunset</option>
           <option value="neon">Neon</option>
         </select>
       </label>
-      <label className="space-y-1">
+      <label className={lbl}>
         <span className="text-xs text-slate-400">Cards</span>
-        <select value={settings.cardTheme ?? "classic"} onChange={(e) => updateSetting("cardTheme", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+        <select value={settings.cardTheme ?? "classic"} onChange={(e) => updateSetting("cardTheme", e.target.value)} className={sel}>
           <option value="classic">Classic</option>
           <option value="parchment">Parchment</option>
           <option value="midnight">Midnight</option>
           <option value="neon">Neon</option>
         </select>
       </label>
-      <label className="space-y-1">
+      <label className={lbl}>
         <span className="text-xs text-slate-400">Win effect</span>
-        <select value={settings.winAnimation ?? "confetti"} onChange={(e) => updateSetting("winAnimation", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+        <select value={settings.winAnimation ?? "confetti"} onChange={(e) => updateSetting("winAnimation", e.target.value)} className={sel}>
           <option value="confetti">Confetti</option>
           <option value="sparkles">Sparkles</option>
           <option value="pulse">Pulse</option>
@@ -1627,6 +1633,12 @@ export default function UpDownRiverGame() {
       return () => clearTimeout(t);
     }
   }, [popup]);
+
+  useEffect(() => {
+    if (game.phase !== "roundEnd" || isOnlineGame) return;
+    const t = setTimeout(() => setGame((g) => g.phase === "roundEnd" ? nextRound(g) : g), 3500);
+    return () => clearTimeout(t);
+  }, [game.phase, isOnlineGame]);
 
   useEffect(() => {
     if (screen !== "game" || isOnlineGame) return;
@@ -2206,16 +2218,16 @@ export default function UpDownRiverGame() {
           </section>
 
           <aside className="space-y-4">
-            <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl">
-              <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-slate-400">Table banter</h2>
-              <div className="space-y-2">
+            <div className=”rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl”>
+              <h2 className=”mb-3 text-sm font-bold uppercase tracking-widest text-slate-400”>Table banter</h2>
+              <div className=”space-y-2”>
                 {(game.banter ?? []).length ? (game.banter ?? []).slice(0, 5).map((line) => (
-                  <div key={line.id} className="rounded-2xl border border-white/8 bg-slate-900/70 px-3 py-2">
-                    <div className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-400">{line.speaker}</div>
-                    <div className="text-sm text-slate-200">“{line.text}”</div>
+                  <div key={line.id} className=”rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2.5”>
+                    <div className=”mb-1 text-[11px] font-bold uppercase tracking-widest text-amber-400”>{line.speaker}</div>
+                    <div className=”text-sm leading-snug text-slate-100”>”{line.text}”</div>
                   </div>
                 )) : (
-                  <p className="text-sm text-slate-500">The bots are saving their worst material.</p>
+                  <p className=”text-sm text-slate-500”>The bots are saving their worst material.</p>
                 )}
               </div>
             </div>
@@ -2266,7 +2278,12 @@ export default function UpDownRiverGame() {
                               );
                             })()}
                           </div>
-                          <div className={`text-xl font-black tabular-nums ${rank === 0 ? "text-amber-300" : "text-slate-200"}`}>{p.score}</div>
+                          <div className="text-right">
+                            <div className={`text-xl font-black tabular-nums leading-none ${rank === 0 ? "text-amber-300" : "text-slate-200"}`}>{p.score}</div>
+                            {(game.phase === "roundEnd" || game.phase === "gameEnd") && p.roundScore != null && (
+                              <div className={`text-xs font-semibold tabular-nums ${p.bid === p.tricks ? "text-emerald-400" : "text-slate-500"}`}>+{p.roundScore}</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -2274,9 +2291,9 @@ export default function UpDownRiverGame() {
               </div>
             </div>
 
-            {(game.phase === "roundEnd" || game.phase === "gameEnd") && (
+            {game.phase === "gameEnd" && (
               <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl">
-                <h2 className="mb-3 text-xl font-semibold">Round score</h2>
+                <h2 className="mb-3 text-xl font-semibold">Final scores</h2>
                 <div className="overflow-hidden rounded-2xl border border-white/10">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-900 text-slate-300">
@@ -2285,17 +2302,13 @@ export default function UpDownRiverGame() {
                     <tbody>
                       {game.summary?.map((row) => (
                         <tr key={row.name} className="border-t border-white/10 bg-slate-900/60">
-                          <td className="p-2">{row.name}</td><td className="text-center">{row.bid}</td><td className="text-center">{row.tricks}</td><td className="text-center">{row.roundScore}</td><td className="text-center font-bold">{row.score}</td>
+                          <td className="p-2">{row.name}</td><td className="text-center">{row.bid}</td><td className="text-center">{row.tricks}</td><td className="text-center text-emerald-400">+{row.roundScore}</td><td className="text-center font-bold">{row.score}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                {game.phase === "roundEnd" ? (
-                  <button type="button" onClick={() => setGame((g) => nextRound(g))} className="mt-3 w-full rounded-xl bg-white px-4 py-2 font-semibold text-slate-950 hover:bg-slate-200">Next round</button>
-                ) : (
-                  <button type="button" onClick={startGame} className="mt-3 w-full rounded-xl bg-white px-4 py-2 font-semibold text-slate-950 hover:bg-slate-200">Play again</button>
-                )}
+                <button type="button" onClick={startGame} className="mt-3 w-full rounded-xl bg-white px-4 py-2 font-semibold text-slate-950 hover:bg-slate-200">Play again</button>
               </div>
             )}
 
