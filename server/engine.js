@@ -5,7 +5,12 @@ const RANKS = [
   ["2", 2], ["3", 3], ["4", 4], ["5", 5], ["6", 6], ["7", 7], ["8", 8],
   ["9", 9], ["10", 10], ["J", 11], ["Q", 12], ["K", 13], ["A", 14],
 ];
-const BOT_NAMES = ["River Bot", "Delta Bot", "Harbor Bot", "Canyon Bot", "Bridge Bot"];
+function botNamesForPersonality(personality) {
+  if (personality === "brandon") return ["BrandonBot 1", "BrandonBot 2", "BrandonBot 3", "BrandonBot 4", "BrandonBot 5"];
+  if (personality === "trump") return ["TrumpBot 1", "TrumpBot 2", "TrumpBot 3", "TrumpBot 4", "TrumpBot 5"];
+  if (personality === "cabbage") return ["CabbageBot 1", "CabbageBot 2", "CabbageBot 3", "CabbageBot 4", "CabbageBot 5"];
+  return ["RiverBot 1", "RiverBot 2", "RiverBot 3", "RiverBot 4", "RiverBot 5"];
+}
 
 function makeDeck() {
   const deck = [];
@@ -157,67 +162,138 @@ function formatScoreboard(players) {
   return players.map((p) => `${p.name}: bid ${p.bid ?? "-"}, tricks ${p.tricks}, round +${p.roundScore ?? 0}, total ${p.score}`).join(" | ");
 }
 
+function makeBanterEntry(player, text, event) {
+  return { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, speaker: player.name, text, event };
+}
+
 function botBanterLine(game, playerIndex, event, context = {}) {
   const player = game.players[playerIndex];
   if (!player?.isBot) return null;
   const bid = context.bid ?? player.bid ?? 0;
   const highBid = bid >= Math.max(3, Math.ceil(game.handSize * 0.6));
   const bigCard = context.card && (context.card.value >= 12 || context.card.joker || isTrump(context.card, game.trumpSuit));
-  const isTrumpMode = game.settings?.botMode === "trump";
-  const lines = isTrumpMode ? {
-    bid: [
-      `${bid}. Nobody bids better than me. Nobody.`,
-      `I'm bidding ${bid}, and it's going to be TREMENDOUS, believe me.`,
-      `${bid}. I looked at this hand and said, "That's a beautiful hand."`,
-      `Many people are saying my ${bid} is the greatest bid they've ever seen.`,
-      `They say I can smuggle a ${bid}. I don't say that, but that's what they say.`,
-      `${bid}. The fake news media will say it's a bad bid. Wrong.`,
-      `${bid}. I know cards. I know them better than anybody. It's true.`,
-      highBid ? "They say I have 3 red kings. I don't say that, but that's what they say." : null,
-      highBid ? "HUGE bid. Possibly the biggest bid in the history of this game." : null,
-      highBid ? "I am about to be everyone's problem. Tremendous." : null,
-      bid === 0 ? "Zero. Strategic genius. The fake news won't cover it." : null,
-      bid === 0 ? "Nil bid. I call it a perfect nil. Nobody nils like me." : null,
-    ],
-    play: [
-      `That card is beautiful. Very powerful. The best card.`,
-      `Nobody plays cards like me. Nobody. It's true.`,
-      `I just made this game great again.`,
-      `Believe me, this play is tremendous. Many people are saying it.`,
-      `I play this card and everyone claps. True story.`,
-      `This is either a perfect play or a perfect play. We will know shortly.`,
-      `That should inconvenience the losers. Sad!`,
-      bigCard ? "They said it couldn't be done. It can be done." : null,
-      context.card?.joker ? "The joker. Very powerful card. I love jokers." : null,
-      context.isTrump ? "Trump card. I'm the only one who can play it. Believe me." : null,
-    ],
-    trick: [
-      `I win tricks. That's what I do. I win. Always.`,
-      `Another WIN. I win so much, people get tired of it.`,
-      `That's what winning looks like. You're welcome.`,
-      `TREMENDOUS trick. The best. Maybe ever.`,
-      `WINNER. That's what they call me. It's true.`,
-      `I've been winning tricks since before you were born.`,
-      `That trick had my name on it. In gold letters. Big letters.`,
-      `You brought vibes to a maths fight. Very unfair. Sad!`,
-    ],
-    exact: [
-      `Exact bid. I said it, I did it. That's what I do.`,
-      `Perfect score. Like everything I do. Perfect.`,
-      `Nobody hits their bid like me. Nobody. It's a fact.`,
-      `I told you I'd get it. I always get it right. Always.`,
-      `That is called precision. You may clap. Loudly.`,
-    ],
-    miss: [
-      `The cards were rigged. Totally rigged. Sad!`,
-      `That was sabotage. I'm calling for a full investigation.`,
-      `The dealer is corrupt. Absolutely corrupt. Everyone knows it.`,
-      `Fake result. We've seen this before. Total witch hunt.`,
-      `This is the greatest witch hunt in the history of card games.`,
-      `I reject these numbers. The real numbers are beautiful. Believe me.`,
-      `I am filing a formal complaint. Many people agree with me.`,
-    ],
-  } : {
+  const personality = game.settings?.botPersonality ?? "river";
+
+  if (personality === "brandon") {
+    const lines = {
+      bid: [
+        `I can smuggle a ${bid}.`,
+        `BOMBACLART, ${bid}.`,
+        `${bid}. I've made better bids and worse decisions.`,
+        `${bid}. Get your arse in gear.`,
+        `I have consulted the river and it said ${bid}.`,
+        `This hand smells like ${bid} tricks and absolutely zero regrets.`,
+        highBid ? "3 red kings. HELL YEAH BROTHA." : null,
+        highBid ? "Big bid. I am about to become everyone else's problem." : null,
+        bid === 0 ? "Zero. Strategic genius. RASTACLARRRRTTTT." : null,
+        bid === 0 ? "Nil bid. Cowardice, but make it tactical." : null,
+      ],
+      play: [
+        `RASTACLARRRRTTTT`,
+        `I just love playing Bridge over the river kwai`,
+        `PUSSYCLART`,
+        `Get your arse out`,
+        `This is either genius or BOMBACLART. We will know shortly.`,
+        `A humble offering from my enormous brain.`,
+        bigCard ? "HELL YEAH BROTHA" : null,
+        context.card?.joker ? "The joker clown has arrived. BOMBARASTAPUSSYCLART!!!!" : null,
+        context.isTrump ? "Trump delivery. No refunds." : null,
+      ],
+      trick: [
+        `HELL YEAH BROTHA`,
+        `Mine. I'll be framing that trick.`,
+        `Get your arse out of my way.`,
+        `RASTACLARRRRTTTT`,
+        `Another donation to the BrandonBot foundation.`,
+        `You brought vibes to a maths fight.`,
+      ],
+      exact: [
+        `HELL YEAH BROTHA`,
+        `RASTACLARRRRTTTT, I did it!`,
+        `Exact bid. Clean as a whistle.`,
+        `That is called precision. You may clap quietly.`,
+        `Some call it luck. Those people are losing.`,
+      ],
+      miss: [
+        `BOMBACLART!!!`,
+        `BOMBARASTAPUSSYCLART!!!!`,
+        `Battyclart :(`,
+        `The cards betrayed me, as cards often do.`,
+      ],
+    };
+    if (event === "miss" && Math.random() < 0.25) {
+      return [
+        makeBanterEntry(player, "Ceri smells", event),
+        makeBanterEntry(player, "jk jk pls babe you smell lovely", event),
+      ];
+    }
+    const choices = (lines[event] ?? []).filter(Boolean);
+    if (!choices.length) return null;
+    return makeBanterEntry(player, choices[Math.floor(Math.random() * choices.length)], event);
+  }
+
+  if (personality === "trump") {
+    const lines = {
+      bid: [
+        `${bid}. Nobody bids better than me. Nobody.`,
+        `I'm bidding ${bid}, and it's going to be TREMENDOUS, believe me.`,
+        `${bid}. I looked at this hand and said, "That's a beautiful hand."`,
+        `Many people are saying my ${bid} is the greatest bid they've ever seen.`,
+        `They say I can smuggle a ${bid}. I don't say that, but that's what they say.`,
+        `${bid}. The fake news media will say it's a bad bid. Wrong.`,
+        `${bid}. I know cards. I know them better than anybody. It's true.`,
+        highBid ? "They say I have 3 red kings. I don't say that, but that's what they say." : null,
+        highBid ? "HUGE bid. Possibly the biggest bid in the history of this game." : null,
+        highBid ? "I am about to be everyone's problem. Tremendous." : null,
+        bid === 0 ? "Zero. Strategic genius. The fake news won't cover it." : null,
+        bid === 0 ? "Nil bid. I call it a perfect nil. Nobody nils like me." : null,
+      ],
+      play: [
+        `That card is beautiful. Very powerful. The best card.`,
+        `Nobody plays cards like me. Nobody. It's true.`,
+        `I just made this game great again.`,
+        `Believe me, this play is tremendous. Many people are saying it.`,
+        `I play this card and everyone claps. True story.`,
+        `This is either a perfect play or a perfect play. We will know shortly.`,
+        `That should inconvenience the losers. Sad!`,
+        bigCard ? "They said it couldn't be done. It can be done." : null,
+        context.card?.joker ? "The joker. Very powerful card. I love jokers." : null,
+        context.isTrump ? "Trump card. I'm the only one who can play it. Believe me." : null,
+      ],
+      trick: [
+        `I win tricks. That's what I do. I win. Always.`,
+        `Another WIN. I win so much, people get tired of it.`,
+        `That's what winning looks like. You're welcome.`,
+        `TREMENDOUS trick. The best. Maybe ever.`,
+        `WINNER. That's what they call me. It's true.`,
+        `I've been winning tricks since before you were born.`,
+        `That trick had my name on it. In gold letters. Big letters.`,
+        `You brought vibes to a maths fight. Very unfair. Sad!`,
+      ],
+      exact: [
+        `Exact bid. I said it, I did it. That's what I do.`,
+        `Perfect score. Like everything I do. Perfect.`,
+        `Nobody hits their bid like me. Nobody. It's a fact.`,
+        `I told you I'd get it. I always get it right. Always.`,
+        `That is called precision. You may clap. Loudly.`,
+      ],
+      miss: [
+        `The cards were rigged. Totally rigged. Sad!`,
+        `That was sabotage. I'm calling for a full investigation.`,
+        `The dealer is corrupt. Absolutely corrupt. Everyone knows it.`,
+        `Fake result. We've seen this before. Total witch hunt.`,
+        `This is the greatest witch hunt in the history of card games.`,
+        `I reject these numbers. The real numbers are beautiful. Believe me.`,
+        `I am filing a formal complaint. Many people agree with me.`,
+      ],
+    };
+    const choices = (lines[event] ?? []).filter(Boolean);
+    if (!choices.length) return null;
+    return makeBanterEntry(player, choices[Math.floor(Math.random() * choices.length)], event);
+  }
+
+  // normal / river / cabbage
+  const lines = {
     bid: [
       `I reckon I can smuggle a ${bid}.`,
       `${bid}. I have made worse promises with more confidence.`,
@@ -290,11 +366,11 @@ function botBanterLine(game, playerIndex, event, context = {}) {
   };
   const choices = (lines[event] ?? []).filter(Boolean);
   if (!choices.length) return null;
-  return { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, speaker: player.name, text: choices[Math.floor(Math.random() * choices.length)], event };
+  return makeBanterEntry(player, choices[Math.floor(Math.random() * choices.length)], event);
 }
 
 function withBanter(game, entries) {
-  const next = entries.filter(Boolean);
+  const next = entries.flat().filter(Boolean);
   if (!next.length) return game;
   return { ...game, banter: [...next, ...(game.banter ?? [])].slice(0, 12) };
 }
@@ -348,7 +424,7 @@ function createGame(settings, seats) {
   const sequence = handSequence(cleanSettings.maxHand);
   const players = seats.slice(0, n).map((seat, i) => ({
     id: seat.id,
-    name: seat.name || BOT_NAMES[i] || `Player ${i + 1}`,
+    name: seat.name || botNamesForPersonality(cleanSettings.botPersonality)[i] || `Player ${i + 1}`,
     isHuman: !seat.isBot,
     isBot: !!seat.isBot,
     connected: !seat.isBot,
@@ -360,7 +436,7 @@ function createGame(settings, seats) {
   }));
   const auditLog = [
     "Up & Down the River - Multiplayer Full Game Log",
-    `Settings: players ${cleanSettings.players}, max hand ${cleanSettings.maxHand}, screw the dealer ${cleanSettings.screwDealer ? "on" : "off"}, difficulty ${cleanSettings.difficulty}.`,
+    `Settings: players ${cleanSettings.players}, max hand ${cleanSettings.maxHand}, screw the dealer ${cleanSettings.screwDealer ? "on" : "off"}, personality ${cleanSettings.botPersonality ?? "river"}.`,
     `Players: ${players.map((p) => p.name).join(", ")}`,
   ];
   return dealRound(players, cleanSettings, sequence, 0, [], auditLog, []);
@@ -485,7 +561,7 @@ function sanitizeGame(game, playerId) {
 }
 
 export {
-  BOT_NAMES,
+  botNamesForPersonality,
   createGame,
   legalBids,
   legalCards,

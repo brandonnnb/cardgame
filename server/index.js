@@ -6,7 +6,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import {
-  BOT_NAMES,
+  botNamesForPersonality,
   chooseBidBot,
   chooseCardBot,
   createGame,
@@ -79,7 +79,7 @@ function addBotSeat(room) {
   if (room.seats.length >= 6) return;
   room.seats.push({
     id: randomUUID(),
-    name: BOT_NAMES[botNum] ?? `Bot ${botNum + 1}`,
+    name: botNamesForPersonality(room.settings?.botPersonality)[botNum] ?? `Bot ${botNum + 1}`,
     isBot: true,
     connected: true,
   });
@@ -199,7 +199,7 @@ function createRoom(ws, data) {
     players: Number(data.settings?.players ?? 4),
     maxHand: Number(data.settings?.maxHand ?? 7),
     screwDealer: data.settings?.screwDealer !== false,
-    difficulty: String(data.settings?.difficulty ?? "hard"),
+    botPersonality: String(data.settings?.botPersonality ?? "river"),
     botSpeed: 450,
     helper: false,
     samples: Number(data.settings?.samples ?? 120),

@@ -7,19 +7,23 @@ const RANKS = [
   ["2", 2], ["3", 3], ["4", 4], ["5", 5], ["6", 6], ["7", 7], ["8", 8],
   ["9", 9], ["10", 10], ["J", 11], ["Q", 12], ["K", 13], ["A", 14],
 ];
-const BOT_NAMES = ["River Bot", "Delta Bot", "Harbor Bot", "Canyon Bot", "Bridge Bot"];
+function botNamesForPersonality(personality) {
+  if (personality === "brandon") return ["BrandonBot 1", "BrandonBot 2", "BrandonBot 3", "BrandonBot 4", "BrandonBot 5"];
+  if (personality === "trump") return ["TrumpBot 1", "TrumpBot 2", "TrumpBot 3", "TrumpBot 4", "TrumpBot 5"];
+  if (personality === "cabbage") return ["CabbageBot 1", "CabbageBot 2", "CabbageBot 3", "CabbageBot 4", "CabbageBot 5"];
+  return ["RiverBot 1", "RiverBot 2", "RiverBot 3", "RiverBot 4", "RiverBot 5"];
+}
 const DEFAULT_SETTINGS = {
   players: 4,
   maxHand: 7,
   screwDealer: true,
   botSpeed: 450,
-  difficulty: "hard",
+  botPersonality: "river",
   helper: false,
   samples: 120,
   colorTheme: "river",
   cardTheme: "classic",
   winAnimation: "confetti",
-  botMode: "normal",
 };
 const ThemeContext = React.createContext(DEFAULT_SETTINGS);
 const SAVE_KEY = "river.savedGame.v1";
@@ -73,10 +77,11 @@ function handSequence(maxHand) {
   return [...down, ...up];
 }
 
-function makePlayers(n) {
+function makePlayers(n, settings = {}) {
+  const names = botNamesForPersonality(settings.botPersonality);
   return Array.from({ length: n }, (_, i) => ({
     id: `p${i}`,
-    name: i === 0 ? "You" : BOT_NAMES[i - 1],
+    name: i === 0 ? "You" : (names[i - 1] ?? `Bot ${i}`),
     isHuman: i === 0,
     hand: [],
     bid: null,
@@ -208,67 +213,139 @@ function formatVoids(voids, players) {
   return entries.length ? entries.join(" | ") : "none";
 }
 
+function makeBanterEntry(player, text, event) {
+  return { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, speaker: player.name, text, event };
+}
+
 function botBanterLine(game, playerIndex, event, context = {}) {
   const player = game.players[playerIndex];
   if (!player || player.isHuman) return null;
   const bid = context.bid ?? player.bid ?? 0;
   const highBid = bid >= Math.max(3, Math.ceil(game.handSize * 0.6));
   const bigCard = context.card && (context.card.value >= 12 || context.card.joker || isTrump(context.card, game.trumpSuit));
-  const isTrumpMode = game.settings?.botMode === "trump";
-  const lines = isTrumpMode ? {
-    bid: [
-      `${bid}. Nobody bids better than me. Nobody.`,
-      `I'm bidding ${bid}, and it's going to be TREMENDOUS, believe me.`,
-      `${bid}. I looked at this hand and said, "That's a beautiful hand."`,
-      `Many people are saying my ${bid} is the greatest bid they've ever seen.`,
-      `They say I can smuggle a ${bid}. I don't say that, but that's what they say.`,
-      `${bid}. The fake news media will say it's a bad bid. Wrong.`,
-      `${bid}. I know cards. I know them better than anybody. It's true.`,
-      highBid ? "They say I have 3 red kings. I don't say that, but that's what they say." : null,
-      highBid ? "HUGE bid. Possibly the biggest bid in the history of this game." : null,
-      highBid ? "I am about to be everyone's problem. Tremendous." : null,
-      bid === 0 ? "Zero. Strategic genius. The fake news won't cover it." : null,
-      bid === 0 ? "Nil bid. I call it a perfect nil. Nobody nils like me." : null,
-    ],
-    play: [
-      `That card is beautiful. Very powerful. The best card.`,
-      `Nobody plays cards like me. Nobody. It's true.`,
-      `I just made this game great again.`,
-      `Believe me, this play is tremendous. Many people are saying it.`,
-      `I play this card and everyone claps. True story.`,
-      `This is either a perfect play or a perfect play. We will know shortly.`,
-      `That should inconvenience the losers. Sad!`,
-      bigCard ? "They said it couldn't be done. It can be done." : null,
-      context.card?.joker ? "The joker. Very powerful card. I love jokers." : null,
-      context.isTrump ? "Trump card. I'm the only one who can play it. Believe me." : null,
-    ],
-    trick: [
-      `I win tricks. That's what I do. I win. Always.`,
-      `Another WIN. I win so much, people get tired of it.`,
-      `That's what winning looks like. You're welcome.`,
-      `TREMENDOUS trick. The best. Maybe ever.`,
-      `WINNER. That's what they call me. It's true.`,
-      `I've been winning tricks since before you were born.`,
-      `That trick had my name on it. In gold letters. Big letters.`,
-      `You brought vibes to a maths fight. Very unfair. Sad!`,
-    ],
-    exact: [
-      `Exact bid. I said it, I did it. That's what I do.`,
-      `Perfect score. Like everything I do. Perfect.`,
-      `Nobody hits their bid like me. Nobody. It's a fact.`,
-      `I told you I'd get it. I always get it right. Always.`,
-      `That is called precision. You may clap. Loudly.`,
-    ],
-    miss: [
-      `The cards were rigged. Totally rigged. Sad!`,
-      `That was sabotage. I'm calling for a full investigation.`,
-      `The dealer is corrupt. Absolutely corrupt. Everyone knows it.`,
-      `Fake result. We've seen this before. Total witch hunt.`,
-      `This is the greatest witch hunt in the history of card games.`,
-      `I reject these numbers. The real numbers are beautiful. Believe me.`,
-      `I am filing a formal complaint. Many people agree with me.`,
-    ],
-  } : {
+  const personality = game.settings?.botPersonality ?? "river";
+
+  if (personality === "brandon") {
+    const lines = {
+      bid: [
+        `I can smuggle a ${bid}.`,
+        `BOMBACLART, ${bid}.`,
+        `${bid}. I've made better bids and worse decisions.`,
+        `${bid}. Get your arse in gear.`,
+        `I have consulted the river and it said ${bid}.`,
+        `This hand smells like ${bid} tricks and absolutely zero regrets.`,
+        highBid ? "3 red kings. HELL YEAH BROTHA." : null,
+        highBid ? "Big bid. I am about to become everyone else's problem." : null,
+        bid === 0 ? "Zero. Strategic genius. RASTACLARRRRTTTT." : null,
+        bid === 0 ? "Nil bid. Cowardice, but make it tactical." : null,
+      ],
+      play: [
+        `RASTACLARRRRTTTT`,
+        `I just love playing Bridge over the river kwai`,
+        `PUSSYCLART`,
+        `Get your arse out`,
+        `This is either genius or BOMBACLART. We will know shortly.`,
+        `A humble offering from my enormous brain.`,
+        bigCard ? "HELL YEAH BROTHA" : null,
+        context.card?.joker ? "The joker clown has arrived. BOMBARASTAPUSSYCLART!!!!" : null,
+        context.isTrump ? "Trump delivery. No refunds." : null,
+      ],
+      trick: [
+        `HELL YEAH BROTHA`,
+        `Mine. I'll be framing that trick.`,
+        `Get your arse out of my way.`,
+        `RASTACLARRRRTTTT`,
+        `Another donation to the BrandonBot foundation.`,
+        `You brought vibes to a maths fight.`,
+      ],
+      exact: [
+        `HELL YEAH BROTHA`,
+        `RASTACLARRRRTTTT, I did it!`,
+        `Exact bid. Clean as a whistle.`,
+        `That is called precision. You may clap quietly.`,
+        `Some call it luck. Those people are losing.`,
+      ],
+      miss: [
+        `BOMBACLART!!!`,
+        `BOMBARASTAPUSSYCLART!!!!`,
+        `Battyclart :(`,
+        `The cards betrayed me, as cards often do.`,
+        null, // slot for the paired "Ceri smells" quip — handled below
+      ],
+    };
+    if (event === "miss" && Math.random() < 0.25) {
+      return [
+        makeBanterEntry(player, "Ceri smells", event),
+        makeBanterEntry(player, "jk jk pls babe you smell lovely", event),
+      ];
+    }
+    const choices = (lines[event] ?? []).filter(Boolean);
+    if (!choices.length) return null;
+    return makeBanterEntry(player, choices[Math.floor(Math.random() * choices.length)], event);
+  }
+
+  if (personality === "trump") {
+    const lines = {
+      bid: [
+        `${bid}. Nobody bids better than me. Nobody.`,
+        `I'm bidding ${bid}, and it's going to be TREMENDOUS, believe me.`,
+        `${bid}. I looked at this hand and said, "That's a beautiful hand."`,
+        `Many people are saying my ${bid} is the greatest bid they've ever seen.`,
+        `They say I can smuggle a ${bid}. I don't say that, but that's what they say.`,
+        `${bid}. The fake news media will say it's a bad bid. Wrong.`,
+        `${bid}. I know cards. I know them better than anybody. It's true.`,
+        highBid ? "They say I have 3 red kings. I don't say that, but that's what they say." : null,
+        highBid ? "HUGE bid. Possibly the biggest bid in the history of this game." : null,
+        highBid ? "I am about to be everyone's problem. Tremendous." : null,
+        bid === 0 ? "Zero. Strategic genius. The fake news won't cover it." : null,
+        bid === 0 ? "Nil bid. I call it a perfect nil. Nobody nils like me." : null,
+      ],
+      play: [
+        `That card is beautiful. Very powerful. The best card.`,
+        `Nobody plays cards like me. Nobody. It's true.`,
+        `I just made this game great again.`,
+        `Believe me, this play is tremendous. Many people are saying it.`,
+        `I play this card and everyone claps. True story.`,
+        `This is either a perfect play or a perfect play. We will know shortly.`,
+        `That should inconvenience the losers. Sad!`,
+        bigCard ? "They said it couldn't be done. It can be done." : null,
+        context.card?.joker ? "The joker. Very powerful card. I love jokers." : null,
+        context.isTrump ? "Trump card. I'm the only one who can play it. Believe me." : null,
+      ],
+      trick: [
+        `I win tricks. That's what I do. I win. Always.`,
+        `Another WIN. I win so much, people get tired of it.`,
+        `That's what winning looks like. You're welcome.`,
+        `TREMENDOUS trick. The best. Maybe ever.`,
+        `WINNER. That's what they call me. It's true.`,
+        `I've been winning tricks since before you were born.`,
+        `That trick had my name on it. In gold letters. Big letters.`,
+        `You brought vibes to a maths fight. Very unfair. Sad!`,
+      ],
+      exact: [
+        `Exact bid. I said it, I did it. That's what I do.`,
+        `Perfect score. Like everything I do. Perfect.`,
+        `Nobody hits their bid like me. Nobody. It's a fact.`,
+        `I told you I'd get it. I always get it right. Always.`,
+        `That is called precision. You may clap. Loudly.`,
+      ],
+      miss: [
+        `The cards were rigged. Totally rigged. Sad!`,
+        `That was sabotage. I'm calling for a full investigation.`,
+        `The dealer is corrupt. Absolutely corrupt. Everyone knows it.`,
+        `Fake result. We've seen this before. Total witch hunt.`,
+        `This is the greatest witch hunt in the history of card games.`,
+        `I reject these numbers. The real numbers are beautiful. Believe me.`,
+        `I am filing a formal complaint. Many people agree with me.`,
+      ],
+    };
+    const choices = (lines[event] ?? []).filter(Boolean);
+    if (!choices.length) return null;
+    return makeBanterEntry(player, choices[Math.floor(Math.random() * choices.length)], event);
+  }
+
+  // normal / river / cabbage
+  const lines = {
     bid: [
       `I reckon I can smuggle a ${bid}.`,
       `${bid}. I have made worse promises with more confidence.`,
@@ -341,16 +418,11 @@ function botBanterLine(game, playerIndex, event, context = {}) {
   };
   const choices = (lines[event] ?? []).filter(Boolean);
   if (!choices.length) return null;
-  return {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    speaker: player.name,
-    text: choices[Math.floor(Math.random() * choices.length)],
-    event,
-  };
+  return makeBanterEntry(player, choices[Math.floor(Math.random() * choices.length)], event);
 }
 
 function withBanter(game, entries) {
-  const next = entries.filter(Boolean);
+  const next = entries.flat().filter(Boolean);
   if (!next.length) return game;
   return { ...game, banter: [...next, ...(game.banter ?? [])].slice(0, 12) };
 }
@@ -414,10 +486,10 @@ function dealRound(basePlayers, settings, sequence, roundIndex, oldLog = [], old
 function newGame(rawSettings = DEFAULT_SETTINGS) {
   const settings = { ...rawSettings, maxHand: Math.min(rawSettings.maxHand, maxAllowedHand(rawSettings.players)) };
   const sequence = handSequence(settings.maxHand);
-  const players = makePlayers(settings.players);
+  const players = makePlayers(settings.players, settings);
   const auditLog = [
     "Up & Down the River - Full Game Log",
-    `Settings: players ${settings.players}, max hand ${settings.maxHand}, screw the dealer ${settings.screwDealer ? "on" : "off"}, difficulty ${settings.difficulty}, samples ${settings.samples}.`,
+    `Settings: players ${settings.players}, max hand ${settings.maxHand}, screw the dealer ${settings.screwDealer ? "on" : "off"}, personality ${settings.botPersonality}, samples ${settings.samples}.`,
     `Players: ${players.map((p) => p.name).join(", ")}`,
   ];
   return dealRound(players, settings, sequence, 0, [], auditLog, []);
@@ -689,10 +761,33 @@ function estimateBidExtreme(game, playerIndex) {
   return best;
 }
 
+// Prune equivalent candidates before MC evaluation.
+// Within winners and losers separately, keep only the highest and lowest card per effective suit.
+// This reduces O(hand) candidates to O(2 * suits) without losing strategic coverage.
+function pruneCardOptions(options, trick, trumpSuit) {
+  if (options.length <= 2) return options;
+  function keepExtremes(cards) {
+    if (cards.length <= 2) return cards;
+    const bySuit = {};
+    for (const c of cards) {
+      const s = effectiveSuit(c, trumpSuit);
+      if (!bySuit[s]) bySuit[s] = [];
+      bySuit[s].push(c);
+    }
+    return Object.values(bySuit).flatMap((g) => g.length <= 2 ? g : [low(g, trumpSuit), high(g, trumpSuit)]);
+  }
+  if (!trick.length) return keepExtremes(options);
+  const winners = options.filter((c) => wouldWin(c, trick, trumpSuit));
+  const losers = options.filter((c) => !wouldWin(c, trick, trumpSuit));
+  const pruned = [...keepExtremes(winners), ...keepExtremes(losers)];
+  return pruned.length >= 2 ? pruned : options.slice(0, 2);
+}
+
 function chooseCardExtreme(game, playerIndex) {
   const p = game.players[playerIndex];
-  const options = legalCards(p.hand, game.trick, game.trumpSuit);
-  if (options.length === 1) return options[0];
+  const allOptions = legalCards(p.hand, game.trick, game.trumpSuit);
+  if (allOptions.length === 1) return allOptions[0];
+  const options = pruneCardOptions(allOptions, game.trick, game.trumpSuit);
 
   const n = game.players.length;
   const unseen = getUnseenCards(game, playerIndex);
@@ -734,51 +829,57 @@ function chooseCardExtreme(game, playerIndex) {
                 strength(cand, game.trumpSuit) < strength(best, game.trumpSuit))))));
     if (better) { bestUtility = utility; bestHit = hitRate; bestErr = meanErr; best = cand; }
   }
-  return best;
+  // If the pruned best isn't in allOptions (shouldn't happen) fall back safely
+  return allOptions.find((c) => c.id === best.id) ?? best;
 }
 
-// ── Difficulty dispatch ──────────────────────────────────────────────────────
+// ── Personality dispatch ─────────────────────────────────────────────────────
+
+function withMoreSamples(game, minSamples) {
+  const current = game.settings?.samples ?? 120;
+  if (current >= minSamples) return game;
+  return { ...game, settings: { ...game.settings, samples: minSamples } };
+}
 
 function chooseBid(game, playerIndex) {
-  const difficulty = game.settings?.difficulty ?? "hard";
+  const personality = game.settings?.botPersonality ?? "river";
   const legal = legalBids(game, playerIndex);
 
-  if (difficulty === "easy") {
+  if (personality === "cabbage") {
     return legal[Math.floor(Math.random() * legal.length)];
   }
-
-  let target;
-  if (difficulty === "medium") {
-    target = estimateBidMedium(game, playerIndex);
-  } else {
-    target = estimateBidExtreme(game, playerIndex);
-    if (difficulty === "hard" && Math.random() < 0.25) {
-      target += Math.random() < 0.5 ? 1 : -1;
-    }
+  if (personality === "river") {
+    const target = Math.max(0, Math.min(game.handSize, Math.round(estimateBidMedium(game, playerIndex))));
+    return legal.reduce((best, b) => Math.abs(b - target) < Math.abs(best - target) ? b : best, legal[0]);
   }
+
+  // brandon + trump: full MC, brandon bids 1 lower to target losing fewer tricks
+  const gameForSim = personality === "brandon" ? withMoreSamples(game, 300) : game;
+  let target = estimateBidExtreme(gameForSim, playerIndex);
+  if (personality === "brandon") target = Math.max(0, target - 1);
   target = Math.max(0, Math.min(game.handSize, Math.round(target)));
   return legal.reduce((best, b) => Math.abs(b - target) < Math.abs(best - target) ? b : best, legal[0]);
 }
 
 function chooseCard(game, playerIndex) {
-  const difficulty = game.settings?.difficulty ?? "hard";
+  const personality = game.settings?.botPersonality ?? "river";
 
-  if (difficulty === "easy") {
+  if (personality === "cabbage") {
     const options = legalCards(game.players[playerIndex].hand, game.trick, game.trumpSuit);
     if (Math.random() < 0.65) return options[Math.floor(Math.random() * options.length)];
     return chooseCardMedium(game, playerIndex);
   }
-  if (difficulty === "medium") return chooseCardMedium(game, playerIndex);
-  if (difficulty === "hard") {
-    const optimal = chooseCardExtreme(game, playerIndex);
-    if (Math.random() < 0.15) {
-      const options = legalCards(game.players[playerIndex].hand, game.trick, game.trumpSuit);
-      const others = options.filter((c) => c.id !== optimal.id);
-      if (others.length) return others[Math.floor(Math.random() * others.length)];
-    }
-    return optimal;
+  if (personality === "river") return chooseCardMedium(game, playerIndex);
+
+  // brandon: more samples, optimal play toward lower bid target; trump: optimal + tiny noise
+  const gameForSim = personality === "brandon" ? withMoreSamples(game, 400) : game;
+  const optimal = chooseCardExtreme(gameForSim, playerIndex);
+  if (personality === "trump" && Math.random() < 0.05) {
+    const options = legalCards(game.players[playerIndex].hand, game.trick, game.trumpSuit);
+    const others = options.filter((c) => c.id !== optimal.id);
+    if (others.length) return others[Math.floor(Math.random() * others.length)];
   }
-  return chooseCardExtreme(game, playerIndex);
+  return optimal;
 }
 
 function submitBid(game, bid) {
@@ -945,12 +1046,12 @@ function SettingsControls({ settings, updateSetting, compact = false, action = n
         </select>
       </label>
       <label className="space-y-1">
-        <span className="text-xs text-slate-400">Difficulty</span>
-        <select value={settings.difficulty} onChange={(e) => updateSetting("difficulty", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
-          <option value="easy">Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
-          <option value="extreme">Extreme</option>
+        <span className="text-xs text-slate-400">Bot personality</span>
+        <select value={settings.botPersonality ?? "river"} onChange={(e) => updateSetting("botPersonality", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
+          <option value="cabbage">CabbageBot — Easy</option>
+          <option value="river">RiverBot — Medium</option>
+          <option value="brandon">BrandonBot — Extreme</option>
+          <option value="trump">Donald Trump — Extreme</option>
         </select>
       </label>
       <label className="space-y-1">
@@ -1004,13 +1105,6 @@ function SettingsControls({ settings, updateSetting, compact = false, action = n
           <option value="sparkles">Sparkles</option>
           <option value="pulse">Pulse</option>
           <option value="none">None</option>
-        </select>
-      </label>
-      <label className="space-y-1">
-        <span className="text-xs text-slate-400">Bot voice</span>
-        <select value={settings.botMode ?? "normal"} onChange={(e) => updateSetting("botMode", e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2">
-          <option value="normal">Normal</option>
-          <option value="trump">Donald Trump</option>
         </select>
       </label>
       {action}
