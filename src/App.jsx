@@ -1572,6 +1572,8 @@ export default function UpDownRiverGame() {
   useEffect(() => {
     if (screen !== "game" || isOnlineGame) return undefined;
     if (game.phase === "bidding" && biddingPlayer !== null && !game.players[biddingPlayer].isHuman) {
+      const isRoundStart = game.players.every((p) => p.bid === null);
+      const delay = isRoundStart ? Math.max(game.settings.botSpeed, 1500) : game.settings.botSpeed;
       const timer = setTimeout(() => {
         setGame((prev) => {
           const ord = orderFromDealer(prev.dealer, prev.players.length);
@@ -1579,7 +1581,7 @@ export default function UpDownRiverGame() {
           if (prev.phase !== "bidding" || prev.players[idx].isHuman) return prev;
           return submitBid(prev, chooseBid(prev, idx));
         });
-      }, game.settings.botSpeed);
+      }, delay);
       return () => clearTimeout(timer);
     }
 
@@ -1636,7 +1638,7 @@ export default function UpDownRiverGame() {
 
   useEffect(() => {
     if (game.phase !== "roundEnd" || isOnlineGame) return;
-    const t = setTimeout(() => setGame((g) => g.phase === "roundEnd" ? nextRound(g) : g), 3500);
+    const t = setTimeout(() => setGame((g) => g.phase === "roundEnd" ? nextRound(g) : g), 8000);
     return () => clearTimeout(t);
   }, [game.phase, isOnlineGame]);
 
@@ -2218,16 +2220,16 @@ export default function UpDownRiverGame() {
           </section>
 
           <aside className="space-y-4">
-            <div className=”rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl”>
-              <h2 className=”mb-3 text-sm font-bold uppercase tracking-widest text-slate-400”>Table banter</h2>
-              <div className=”space-y-2”>
+            <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-slate-400">Table banter</h2>
+              <div className="space-y-2">
                 {(game.banter ?? []).length ? (game.banter ?? []).slice(0, 5).map((line) => (
-                  <div key={line.id} className=”rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2.5”>
-                    <div className=”mb-1 text-[11px] font-bold uppercase tracking-widest text-amber-400”>{line.speaker}</div>
-                    <div className=”text-sm leading-snug text-slate-100”>”{line.text}”</div>
+                  <div key={line.id} className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-2.5">
+                    <div className="mb-1 text-[11px] font-bold uppercase tracking-widest text-amber-400">{line.speaker}</div>
+                    <div className="text-sm leading-snug text-slate-100">"{line.text}"</div>
                   </div>
                 )) : (
-                  <p className=”text-sm text-slate-500”>The bots are saving their worst material.</p>
+                  <p className="text-sm text-slate-500">The bots are saving their worst material.</p>
                 )}
               </div>
             </div>
@@ -2290,6 +2292,30 @@ export default function UpDownRiverGame() {
                   })}
               </div>
             </div>
+
+            {game.phase === "roundEnd" && (
+              <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl">
+                <h2 className="mb-3 text-xl font-semibold">Round {(game.roundIndex ?? 0)} results</h2>
+                <div className="overflow-hidden rounded-2xl border border-white/10">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-900 text-slate-300">
+                      <tr><th className="p-2 text-left">Player</th><th>Bid</th><th>Won</th><th>+Pts</th><th>Total</th></tr>
+                    </thead>
+                    <tbody>
+                      {game.players.map((p) => (
+                        <tr key={p.id} className="border-t border-white/10 bg-slate-900/60">
+                          <td className="p-2">{p.name}</td>
+                          <td className="text-center">{p.bid ?? "-"}</td>
+                          <td className="text-center">{p.tricks}</td>
+                          <td className={`text-center font-semibold ${p.bid === p.tricks ? "text-emerald-400" : "text-slate-500"}`}>+{p.roundScore ?? 0}</td>
+                          <td className="text-center font-bold">{p.score}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {game.phase === "gameEnd" && (
               <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl">

@@ -94,12 +94,14 @@ function ensureMinimumSeats(room) {
   while (room.seats.length < 3) addBotSeat(room);
 }
 
+const roundStartDelayMs = 1500;
+
 function startRoom(room) {
   ensureMinimumSeats(room);
   room.status = "playing";
   room.game = createGame(room.settings, room.seats);
   broadcastRoom(room);
-  scheduleBots(room);
+  scheduleBots(room, roundStartDelayMs);
 }
 
 function activeSeatIds(room) {
@@ -129,25 +131,30 @@ function currentPlayer(room) {
 function advanceRoom(room) {
   if (!room.game) return;
   let guard = 0;
+  let crossedRoundBoundary = false;
   while (guard++ < 20) {
     if (room.game.phase === "trickPause") {
       room.game = resolveTrick(room.game);
-      if (room.game.phase === "roundEnd") room.game = nextRound(room.game);
+      if (room.game.phase === "roundEnd") {
+        room.game = nextRound(room.game);
+        crossedRoundBoundary = true;
+      }
       syncSeatFlags(room);
       continue;
     }
     if (room.game.phase === "roundEnd") {
       room.game = nextRound(room.game);
+      crossedRoundBoundary = true;
       syncSeatFlags(room);
       continue;
     }
     break;
   }
   broadcastRoom(room);
-  scheduleBots(room);
+  scheduleBots(room, crossedRoundBoundary ? roundStartDelayMs : botDelayMs);
 }
 
-function scheduleBots(room) {
+function scheduleBots(room, delayMs = botDelayMs) {
   if (room.botTimer) clearTimeout(room.botTimer);
   if (!room.game || room.game.phase === "gameEnd") return;
   const player = currentPlayer(room);
@@ -163,7 +170,7 @@ function scheduleBots(room) {
       room.game = playCard(room.game, idx, chooseCardBot(room.game, idx).id);
     }
     advanceRoom(room);
-  }, botDelayMs);
+  }, delayMs);
 }
 
 function handleDisconnect(room, seat) {
@@ -329,7 +336,9 @@ wss.on("connection", (ws) => {
     const room = rooms.get(ws.roomCode);
     if (!room) return;
     const seat = room.seats.find((s) => s.id === ws.playerId);
-    if (seat) handleDisconnect(room, seat);
+    // Only disconnect if this ws is still the seat's active socket.
+    // If the player reconnected, seat.socket will be the new ws and we must not evict them.
+    if (seat && seat.socket === ws) handleDisconnect(room, seat);
   });
 });
 
