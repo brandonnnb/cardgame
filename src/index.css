@@ -38,10 +38,10 @@ body {
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(var(--throw-rot, 0deg)); }
 }
 @keyframes bubbleIn {
-  0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.85); }
-  12%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  0%   { opacity: 0; transform: translateY(6px) scale(0.85); }
+  12%  { opacity: 1; transform: translateY(0) scale(1); }
   85%  { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -4px) scale(0.96); }
+  100% { opacity: 0; transform: translateY(-4px) scale(0.96); }
 }
 @keyframes confettiFall {
   0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
@@ -69,6 +69,10 @@ body {
   0%, 100% { box-shadow: 0 0 0 0 rgba(125,211,252,0.0), 0 0 18px 2px rgba(125,211,252,0.25); }
   50%       { box-shadow: 0 0 0 3px rgba(125,211,252,0.25), 0 0 26px 6px rgba(125,211,252,0.40); }
 }
+@keyframes trumpGlow {
+  0%, 100% { box-shadow: 0 0 6px 1px var(--glow-color), 0 0 2px 0px var(--glow-color); }
+  50%       { box-shadow: 0 0 24px 5px var(--glow-color), 0 0 10px 2px var(--glow-color); }
+}
 
 @layer utilities {
   .animate-pop-in        { animation: popIn        0.28s cubic-bezier(0.175, 0.885, 0.32, 1.4) forwards; }
@@ -82,6 +86,7 @@ body {
   .animate-trophy-bounce { animation: trophyBounce 1.4s  ease-in-out infinite; }
   .animate-confetti-fall { animation: confettiFall linear forwards; }
   .animate-seat-breath   { animation: seatBreath   1.6s  ease-in-out infinite; }
+  .animate-trump-glow    { animation: trumpGlow    1.8s  ease-in-out infinite; }
 }
 
 /* Felt grain — layered over the radial felt gradient */
@@ -94,7 +99,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-pop-in, .animate-slide-down, .animate-deal-in, .animate-throw-in,
   .animate-sparkle, .animate-pulse-glow, .animate-trophy-bounce,
-  .animate-confetti-fall, .animate-seat-breath {
+  .animate-confetti-fall, .animate-seat-breath, .animate-trump-glow {
     animation-duration: 0.01s;
     animation-iteration-count: 1;
   }

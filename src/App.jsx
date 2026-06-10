@@ -29,6 +29,8 @@ const DEFAULT_SETTINGS = {
   cardTheme: "classic",
   winAnimation: "confetti",
 };
+const TRICK_REVEAL_DELAY_MS = 2200;
+const ROUND_END_DELAY_MS = 12000;
 const ThemeContext = React.createContext(DEFAULT_SETTINGS);
 const SAVE_KEY = "river.savedGame.v1";
 const MP_PROFILE_KEY = "river.multiplayerProfile.v1";
@@ -1113,7 +1115,7 @@ const CARD_FACE_THEMES = {
   neon:      { face: "#0a1018", edge: "#22d3ee", black: "#bdf3ff", red: "#ff7ad9", pipShadow: "0 0 10px rgba(34,211,238,0.7)" },
 };
 
-function PlayingCard({ card, disabled, onClick, small = false, highlighted = false, viewing = false, faded = false, outcome = null, winning = false, engine = false }) {
+function PlayingCard({ card, disabled, onClick, small = false, highlighted = false, viewing = false, outcome = null, winning = false, engine = false }) {
   const settings = React.useContext(ThemeContext);
   const t = TABLE_THEMES[settings.colorTheme] ?? TABLE_THEMES.river;
   const ct = CARD_FACE_THEMES[settings.cardTheme] ?? CARD_FACE_THEMES.classic;
@@ -1135,8 +1137,8 @@ function PlayingCard({ card, disabled, onClick, small = false, highlighted = fal
     ring = "ring-2";
     ringStyle = { "--tw-ring-color": "rgba(248,113,113,0.55)" };
   } else if (highlighted) {
-    ring = "ring-2";
-    ringStyle = { "--tw-ring-color": `${t.accent}cc`, boxShadow: `0 0 14px ${t.accent}55` };
+    ring = "ring-[3px] ring-offset-1 animate-trump-glow";
+    ringStyle = { "--tw-ring-color": t.accent, "--tw-ring-offset-color": "transparent", "--glow-color": `${t.accent}99` };
   }
 
   return (
@@ -1150,7 +1152,6 @@ function PlayingCard({ card, disabled, onClick, small = false, highlighted = fal
         small ? "h-[4.4rem] w-12" : "h-[6.8rem] w-[4.7rem]",
         ring,
         viewing ? "cursor-default" : "transition-transform duration-150 hover:-translate-y-2 hover:shadow-[0_10px_20px_rgba(0,0,0,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:translate-y-0",
-        faded && !viewing ? "opacity-55" : "",
       ].join(" ")}
       style={{ background: ct.face, borderColor: ct.edge, outlineColor: t.accent, ...ringStyle }}
     >
@@ -1221,7 +1222,7 @@ function trickSpot(anchor) {
   return { x: cx + (anchor.x - cx) * 0.45, y: cy + (anchor.y - cy) * 0.45 };
 }
 
-function Seat({ player, playerIndex, game, anchor, isActive, isDealer, isLead, showVoids, banterLine }) {
+function Seat({ player, playerIndex, game, anchor, isActive, isDealer, isLead, showVoids, banterLine, bubbleSide = "center" }) {
   const t = useTheme();
   const bidSet = player.bid !== null;
   const hit = bidSet && player.tricks === player.bid;
@@ -1236,11 +1237,18 @@ function Seat({ player, playerIndex, game, anchor, isActive, isDealer, isLead, s
     >
       {banterLine && (
         <div
-          key={banterLine.id}
-          className="animate-bubble pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 w-max max-w-[12rem] -translate-x-1/2 rounded-2xl rounded-bl-sm border px-3 py-2 text-xs font-semibold leading-snug shadow-xl"
-          style={{ background: "#f6efdd", color: "#2a2118", borderColor: `${t.accent}88` }}
+          className={[
+            "pointer-events-none absolute bottom-full z-40 mb-2 w-max max-w-[9rem]",
+            bubbleSide === "left" ? "left-0" : bubbleSide === "right" ? "right-0" : "left-1/2 -translate-x-1/2",
+          ].join(" ")}
         >
-          {banterLine.text}
+          <div
+            key={banterLine.id}
+            className={`animate-bubble rounded-2xl border px-3 py-2 text-xs font-semibold leading-snug shadow-xl ${bubbleSide === "right" ? "rounded-br-sm" : "rounded-bl-sm"}`}
+            style={{ background: "#f6efdd", color: "#2a2118", borderColor: `${t.accent}88` }}
+          >
+            {banterLine.text}
+          </div>
         </div>
       )}
 
@@ -1341,6 +1349,7 @@ function GameTable({ game, humanIndex, biddingPlayer, trickLeadIndex, showVoids,
 
   const trickWinner = game.trick.length ? winningPlay(game.trick, game.trumpSuit) : null;
   const resolved = game.phase === "trickPause";
+  const resolvedWinner = resolved && trickWinner ? game.players[trickWinner.playerIndex] : null;
 
   return (
     <div className="relative w-full" style={{ aspectRatio: "16 / 10.5" }}>
@@ -1375,6 +1384,7 @@ function GameTable({ game, humanIndex, biddingPlayer, trickLeadIndex, showVoids,
             isLead={trickLeadIndex === idx && (game.phase === "playing" || game.phase === "trickPause" || game.phase === "bidding")}
             showVoids={showVoids}
             banterLine={bubbleFor(p)}
+            bubbleSide={anchorFor(idx).x < 35 ? "left" : anchorFor(idx).x > 65 ? "right" : "center"}
           />
         );
       })}
@@ -1417,6 +1427,23 @@ function GameTable({ game, humanIndex, biddingPlayer, trickLeadIndex, showVoids,
           </div>
         );
       })}
+
+      {resolvedWinner && (
+        <div className="pointer-events-none absolute left-1/2 top-[52%] z-30 w-[min(22rem,70%)] -translate-x-1/2 -translate-y-1/2 text-center">
+          <div
+            className="animate-pop-in rounded-2xl border px-4 py-3 shadow-[0_18px_45px_rgba(0,0,0,0.55)] backdrop-blur-md"
+            style={{ background: "rgba(7, 18, 13, 0.88)", borderColor: "#34d399aa" }}
+          >
+            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300">Trick winner</div>
+            <div className="mt-1 truncate font-display text-2xl font-black leading-tight text-white sm:text-3xl">
+              {resolvedWinner.name}
+            </div>
+            <div className="mt-1 text-sm font-bold text-emerald-200">
+              wins with {cardText(trickWinner.card)}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* bidding board in the centre while bids come in */}
       {game.phase === "bidding" && (
@@ -1462,7 +1489,6 @@ function HandFan({ hand, humanPlayTurn, humanLegalCards, game, settings, helperA
               <PlayingCard
                 card={card}
                 disabled={humanPlayTurn && !isLegal}
-                faded={!humanPlayTurn}
                 onClick={() => onPlay(card)}
                 highlighted={!!game.trumpSuit && isTrump(card, game.trumpSuit)}
                 outcome={outcome}
@@ -2172,7 +2198,7 @@ export default function UpDownRiverGame() {
     if (game.phase === "trickPause") {
       const timer = setTimeout(() => {
         setGame((prev) => prev.phase === "trickPause" ? resolveTrick(prev) : prev);
-      }, game.settings.botSpeed + 300);
+      }, Math.max(TRICK_REVEAL_DELAY_MS, game.settings.botSpeed + 900));
       return () => clearTimeout(timer);
     }
   }, [game, biddingPlayer, screen, isOnlineGame]);
@@ -2209,7 +2235,7 @@ export default function UpDownRiverGame() {
 
   useEffect(() => {
     if (game.phase !== "roundEnd" || isOnlineGame) return;
-    const t = setTimeout(() => setGame((g) => g.phase === "roundEnd" ? nextRound(g) : g), 8000);
+    const t = setTimeout(() => setGame((g) => g.phase === "roundEnd" ? nextRound(g) : g), ROUND_END_DELAY_MS);
     return () => clearTimeout(t);
   }, [game.phase, isOnlineGame]);
 
@@ -2364,10 +2390,11 @@ export default function UpDownRiverGame() {
   }
 
   const t = TABLE_THEMES[settings.colorTheme] ?? TABLE_THEMES.river;
+  const pauseWinner = game.phase === "trickPause" && game.trick.length ? winningPlay(game.trick, game.trumpSuit) : null;
   const statusText =
     game.phase === "bidding" ? (humanBidTurn ? "Your bid" : `${game.players[biddingPlayer]?.name} is bidding…`)
     : game.phase === "playing" ? (humanPlayTurn ? "Your turn — play a card" : `${game.players[game.turn]?.name} is thinking…`)
-    : game.phase === "trickPause" ? "Trick complete"
+    : game.phase === "trickPause" ? `${game.players[pauseWinner?.playerIndex]?.name ?? "Someone"} wins this trick`
     : game.phase === "roundEnd" ? "Round over"
     : "Game over";
 

@@ -23,6 +23,9 @@ const dist = path.join(root, "dist");
 const rooms = new Map();
 const disconnectGraceMs = 60_000;
 const botDelayMs = 450;
+const trickRevealDelayMs = 2200;
+const roundEndDelayMs = 12000;
+const roundStartDelayMs = 1500;
 const serverId = randomBytes(4).toString("hex");
 
 function roomCode() {
@@ -94,12 +97,11 @@ function ensureMinimumSeats(room) {
   while (room.seats.length < 3) addBotSeat(room);
 }
 
-const roundStartDelayMs = 1500;
-
 function startRoom(room) {
   ensureMinimumSeats(room);
   room.status = "playing";
   room.game = createGame(room.settings, room.seats);
+  if (room.phaseTimer) clearTimeout(room.phaseTimer);
   broadcastRoom(room);
   scheduleBots(room, roundStartDelayMs);
 }
@@ -130,28 +132,54 @@ function currentPlayer(room) {
 
 function advanceRoom(room) {
   if (!room.game) return;
-  let guard = 0;
-  let crossedRoundBoundary = false;
-  while (guard++ < 20) {
+  if (room.phaseTimer) {
+    clearTimeout(room.phaseTimer);
+    room.phaseTimer = null;
+  }
+  syncSeatFlags(room);
+
+  if (room.game.phase === "trickPause") {
+    broadcastRoom(room);
+    schedulePhaseAdvance(room, trickRevealDelayMs);
+    return;
+  }
+
+  if (room.game.phase === "roundEnd") {
+    broadcastRoom(room);
+    schedulePhaseAdvance(room, roundEndDelayMs);
+    return;
+  }
+
+  broadcastRoom(room);
+  scheduleBots(room, botDelayMs);
+}
+
+function schedulePhaseAdvance(room, delayMs) {
+  if (room.phaseTimer) clearTimeout(room.phaseTimer);
+  if (!room.game || room.game.phase === "gameEnd") return;
+  room.phaseTimer = setTimeout(() => {
+    room.phaseTimer = null;
+    if (!room.game) return;
+
     if (room.game.phase === "trickPause") {
       room.game = resolveTrick(room.game);
-      if (room.game.phase === "roundEnd") {
-        room.game = nextRound(room.game);
-        crossedRoundBoundary = true;
-      }
       syncSeatFlags(room);
-      continue;
+      broadcastRoom(room);
+      if (room.game.phase === "roundEnd") {
+        schedulePhaseAdvance(room, roundEndDelayMs);
+      } else {
+        scheduleBots(room, botDelayMs);
+      }
+      return;
     }
+
     if (room.game.phase === "roundEnd") {
       room.game = nextRound(room.game);
-      crossedRoundBoundary = true;
       syncSeatFlags(room);
-      continue;
+      broadcastRoom(room);
+      scheduleBots(room, roundStartDelayMs);
     }
-    break;
-  }
-  broadcastRoom(room);
-  scheduleBots(room, crossedRoundBoundary ? roundStartDelayMs : botDelayMs);
+  }, delayMs);
 }
 
 function scheduleBots(room, delayMs = botDelayMs) {
@@ -215,7 +243,7 @@ function createRoom(ws, data) {
     winAnimation: String(data.settings?.winAnimation ?? "confetti"),
   };
   const now = Date.now();
-  const room = { code, hostId: seat.id, status: "lobby", settings, seats: [seat], game: null, botTimer: null, createdAt: now, updatedAt: now };
+  const room = { code, hostId: seat.id, status: "lobby", settings, seats: [seat], game: null, botTimer: null, phaseTimer: null, createdAt: now, updatedAt: now };
   const bots = Math.max(0, Math.min(5, Number(data.bots ?? 0)));
   for (let i = 0; i < bots; i++) addBotSeat(room);
   rooms.set(code, room);
