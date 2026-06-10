@@ -1,9 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Karla:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --brass: #c9a35c;
+  --cream: #f6efdd;
+}
+
+body {
+  font-family: 'Karla', system-ui, sans-serif;
+}
+
+.font-display { font-family: 'Fraunces', Georgia, serif; }
+.font-body    { font-family: 'Karla', system-ui, sans-serif; }
+
+/* ── Keyframes ── */
 @keyframes popIn {
-  from { opacity: 0; transform: scale(0.75); }
+  from { opacity: 0; transform: scale(0.78); }
   to   { opacity: 1; transform: scale(1); }
 }
 @keyframes slideDown {
@@ -13,6 +28,20 @@
 @keyframes fadeOut {
   from { opacity: 1; }
   to   { opacity: 0; }
+}
+@keyframes dealIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.92) rotate(var(--deal-rot, 0deg)); }
+  to   { opacity: 1; transform: translateY(0) scale(1) rotate(var(--deal-rot, 0deg)); }
+}
+@keyframes throwIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(1.25) rotate(var(--throw-rot, 0deg)); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(var(--throw-rot, 0deg)); }
+}
+@keyframes bubbleIn {
+  0%   { opacity: 0; transform: translate(-50%, 6px) scale(0.85); }
+  12%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  85%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -4px) scale(0.96); }
 }
 @keyframes confettiFall {
   0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
@@ -25,8 +54,8 @@
   60%       { opacity: 1; transform: scale(0.9) rotate(200deg); }
 }
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
-  50%       { box-shadow: 0 0 0 12px rgba(16,185,129,0.18); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,163,92,0); }
+  50%       { box-shadow: 0 0 0 12px rgba(201,163,92,0.20); }
 }
 @keyframes trophyBounce {
   0%, 100% { transform: translateY(0) rotate(-3deg) scale(1); }
@@ -36,13 +65,38 @@
   from { width: 100%; }
   to   { width: 0%; }
 }
+@keyframes seatBreath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(125,211,252,0.0), 0 0 18px 2px rgba(125,211,252,0.25); }
+  50%       { box-shadow: 0 0 0 3px rgba(125,211,252,0.25), 0 0 26px 6px rgba(125,211,252,0.40); }
+}
 
 @layer utilities {
   .animate-pop-in        { animation: popIn        0.28s cubic-bezier(0.175, 0.885, 0.32, 1.4) forwards; }
   .animate-slide-down    { animation: slideDown    0.22s ease-out forwards; }
   .animate-fade-out      { animation: fadeOut      0.3s  ease-in  forwards; }
+  .animate-deal-in       { animation: dealIn       0.32s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards; }
+  .animate-throw-in      { animation: throwIn      0.26s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards; }
+  .animate-bubble        { animation: bubbleIn     4.6s  ease-in-out forwards; }
   .animate-sparkle       { animation: sparkle      1.2s  ease-in-out infinite; }
   .animate-pulse-glow    { animation: pulseGlow    1.8s  ease-in-out infinite; }
   .animate-trophy-bounce { animation: trophyBounce 1.4s  ease-in-out infinite; }
   .animate-confetti-fall { animation: confettiFall linear forwards; }
+  .animate-seat-breath   { animation: seatBreath   1.6s  ease-in-out infinite; }
+}
+
+/* Felt grain — layered over the radial felt gradient */
+.felt-grain {
+  background-image:
+    radial-gradient(ellipse at 50% 38%, rgba(255,255,255,0.10), transparent 62%),
+    repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop-in, .animate-slide-down, .animate-deal-in, .animate-throw-in,
+  .animate-sparkle, .animate-pulse-glow, .animate-trophy-bounce,
+  .animate-confetti-fall, .animate-seat-breath {
+    animation-duration: 0.01s;
+    animation-iteration-count: 1;
+  }
+  .animate-bubble { animation-duration: 4.6s; }
 }
